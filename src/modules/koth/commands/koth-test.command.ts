@@ -2,7 +2,13 @@ import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import type { SlashSubcommand } from '../../../shared/types/command.js';
 import type { ReminderOffsetMinutes } from '../domain/koth.types.js';
 import { DiscordKothAnnouncer } from '../services/koth-notification.service.js';
-import { buildTestReminderMessage } from '../templates/koth-messages.js';
+import {
+  buildNoPermissionMessage,
+  buildReminderNotConfiguredMessage,
+  buildTestFailedMessage,
+  buildTestPublishedMessage,
+  buildTestReminderMessage,
+} from '../templates/koth-messages.js';
 import type { KothCommandDependencies } from './koth-command.dependencies.js';
 
 const OFFSET_OPTION = 'aviso';
@@ -14,6 +20,8 @@ const DEFAULT_OFFSET_MINUTES: ReminderOffsetMinutes = 60;
  * datos, por lo que no interfiere con los avisos reales.
  */
 export function createKothTestSubcommand(deps: KothCommandDependencies): SlashSubcommand {
+  const { icons } = deps.messageContext;
+
   return {
     name: 'prueba',
     description: 'Publica un mensaje de prueba en el canal de avisos (solo administradores)',
@@ -33,7 +41,7 @@ export function createKothTestSubcommand(deps: KothCommandDependencies): SlashSu
     async execute(interaction) {
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
         await interaction.reply({
-          content: '⛔ Solo quien tenga el permiso **Gestionar servidor** puede usar este comando.',
+          content: buildNoPermissionMessage(icons),
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -47,7 +55,7 @@ export function createKothTestSubcommand(deps: KothCommandDependencies): SlashSu
         .getReminders(next)
         .find((candidate) => candidate.offsetMinutes === offset);
       if (reminder === undefined) {
-        await interaction.editReply(`❌ No hay un aviso configurado de ${offset} minutos.`);
+        await interaction.editReply(buildReminderNotConfiguredMessage(offset, icons));
         return;
       }
 
@@ -62,14 +70,13 @@ export function createKothTestSubcommand(deps: KothCommandDependencies): SlashSu
       } catch (error: unknown) {
         const reason = error instanceof Error ? error.message : String(error);
         await interaction.editReply(
-          `❌ No pude publicar en <#${deps.announcementChannelId}>: ${reason}\n` +
-            'Revisa que el bot tenga **Ver canal**, **Enviar mensajes** e **Insertar enlaces** en ese canal.',
+          buildTestFailedMessage(deps.announcementChannelId, reason, icons),
         );
         return;
       }
 
       await interaction.editReply(
-        `✅ Mensaje de prueba (aviso de ${offset} min) publicado en <#${deps.announcementChannelId}>.`,
+        buildTestPublishedMessage(offset, deps.announcementChannelId, icons),
       );
     },
   };

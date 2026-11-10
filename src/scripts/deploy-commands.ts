@@ -2,6 +2,7 @@ import { REST, Routes } from 'discord.js';
 import { loadEnv } from '../config/env.js';
 import { createLogger } from '../core/logger.js';
 import { createCommands } from '../modules/index.js';
+import { IconRegistry } from '../shared/icons/icon-registry.js';
 import { systemClock } from '../shared/utils/clock.js';
 
 /**
@@ -11,7 +12,10 @@ import { systemClock } from '../shared/utils/clock.js';
 async function deployCommands(): Promise<void> {
   const env = loadEnv();
   const logger = createLogger(env.LOG_LEVEL);
-  const body = createCommands({ env, clock: systemClock }).map((command) => command.data);
+  // Los iconos no forman parte de la definición de los comandos; basta un registro vacío.
+  const body = createCommands({ env, clock: systemClock, icons: new IconRegistry() }).map(
+    (command) => command.data,
+  );
 
   const rest = new REST().setToken(env.DISCORD_TOKEN);
   await rest.put(Routes.applicationGuildCommands(env.DISCORD_CLIENT_ID, env.DISCORD_GUILD_ID), {

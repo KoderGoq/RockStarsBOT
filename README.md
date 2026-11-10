@@ -17,13 +17,14 @@ Bot de Discord para el servidor de Minecraft **Boutcraft** (`boutcraft.xyz`). An
 3. [Instalación](#instalación)
 4. [Variables de entorno](#variables-de-entorno)
 5. [Registro de comandos slash](#registro-de-comandos-slash)
-6. [Desarrollo local](#desarrollo-local)
-7. [Compilación y producción](#compilación-y-producción)
-8. [Calidad: lint, tipos y tests](#calidad-lint-tipos-y-tests)
-9. [Funcionamiento del scheduler](#funcionamiento-del-scheduler)
-10. [Persistencia con SQLite](#persistencia-con-sqlite)
-11. [Arquitectura](#arquitectura)
-12. [Cómo ampliar el bot](#cómo-ampliar-el-bot)
+6. [Iconos (Lucide)](#iconos-lucide)
+7. [Desarrollo local](#desarrollo-local)
+8. [Compilación y producción](#compilación-y-producción)
+9. [Calidad: lint, tipos y tests](#calidad-lint-tipos-y-tests)
+10. [Funcionamiento del scheduler](#funcionamiento-del-scheduler)
+11. [Persistencia con SQLite](#persistencia-con-sqlite)
+12. [Arquitectura](#arquitectura)
+13. [Cómo ampliar el bot](#cómo-ampliar-el-bot)
 
 ---
 
@@ -98,6 +99,22 @@ Solo hay que repetirlo cuando cambian los comandos (nombres, descripciones u opc
 | ----------------- | --------------------------------------------------------------------------------- |
 | `/koth siguiente` | Próximo KOTH: hora de inicio, fecha, tiempo restante y timestamp dinámico.        |
 | `/koth horarios`  | Los tres horarios oficiales, con la hora local de cada usuario y la cuenta atrás. |
+
+## Iconos (Lucide)
+
+Los mensajes usan iconos de [Lucide](https://lucide.dev/icons) en lugar de emojis Unicode. Discord no puede renderizar componentes de React ni SVG, así que los iconos se convierten a PNG y se suben como **emojis de la aplicación** (los ves en el Developer Portal → **Emojis**). Los emojis de aplicación son privados del bot: funcionan en cualquier servidor sin que tengas que subirlos a cada uno.
+
+```bash
+pnpm icons:sync            # sube solo los iconos que faltan (se puede repetir sin problema)
+pnpm icons:sync --force    # vuelve a crear todos (p. ej. tras cambiar un color)
+```
+
+Después de sincronizar, reinicia el bot. Al arrancar carga los emojis y registra cuántos encontró. Si faltan, avisa en el log y usa mientras tanto un emoji Unicode de respaldo, así que el bot nunca se queda sin iconos.
+
+- El catálogo está en [`src/shared/icons/icon-catalog.ts`](src/shared/icons/icon-catalog.ts): cada icono tiene su nombre de Lucide, su color y su respaldo.
+- Para añadir un icono: agrégalo al catálogo, ejecuta `pnpm icons:sync`, reinicia el bot y úsalo en los templates con `context.icons.get('nombre')`. Nunca escribas emojis literales en los templates.
+- Los emojis se llaman `lc_<icono>` (por ejemplo `lc_swords`, `lc_calendar_days`).
+- `lucide-static` y `@resvg/resvg-js` son dependencias de **desarrollo**: solo se usan en `icons:sync`, que debes ejecutar desde tu máquina de desarrollo. El bot en producción no las necesita.
 
 ## Desarrollo local
 

@@ -1,15 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildNextKothEmbed,
+  buildNoPermissionMessage,
   buildReminderMessage,
+  buildReminderNotConfiguredMessage,
   buildScheduleEmbed,
+  buildTestFailedMessage,
+  buildTestPublishedMessage,
   buildTestReminderMessage,
+  type MessageContext,
 } from '../../src/modules/koth/templates/koth-messages.js';
+import { createLoadedIconRegistry } from '../helpers/icons.js';
 import { createTimeService, madrid } from '../helpers/time.js';
 
 const timeService = createTimeService();
-const context = { serverIp: 'boutcraft.xyz', timezone: 'Europe/Madrid', mentionEveryone: true };
-const contextWithoutMentions = { ...context, mentionEveryone: false };
+const icons = createLoadedIconRegistry();
+const context: MessageContext = {
+  serverIp: 'boutcraft.xyz',
+  timezone: 'Europe/Madrid',
+  mentionEveryone: true,
+  icons,
+};
+const contextWithoutMentions: MessageContext = { ...context, mentionEveryone: false };
+/** Cualquier emoji Unicode (⚔️, 🔥, ✅...). Los emojis personalizados `<:x:1>` no lo cumplen. */
+const UNICODE_EMOJI = /\p{Extended_Pictographic}/u;
 const occurrence = timeService.getNextOccurrence(madrid('2026-11-09T12:00'));
 const startUnix = Math.floor(occurrence.startsAt.toSeconds());
 
@@ -99,7 +113,12 @@ describe('Templates de mensajes KOTH', () => {
     ).toJSON();
     const kothFields = embed.fields?.filter((field) => field.name.includes('KOTH')) ?? [];
 
-    expect(kothFields.map((field) => field.name)).toEqual(['⚔️ KOTH 1', '⚔️ KOTH 2', '⚔️ KOTH 3']);
+    const swords = icons.get('swords');
+    expect(kothFields.map((field) => field.name)).toEqual([
+      `${swords} KOTH 1`,
+      `${swords} KOTH 2`,
+      `${swords} KOTH 3`,
+    ]);
     const officialTime = /\*\*(\d{2}:\d{2})\*\*/;
     expect(kothFields.map((field) => officialTime.exec(field.value)?.[1])).toEqual([
       '17:00',
@@ -107,5 +126,43 @@ describe('Templates de mensajes KOTH', () => {
       '02:00',
     ]);
     expect(embed.description).toContain('1 h, 30 min y 10 min');
+  });
+
+  describe('iconos de Lucide', () => {
+    it('los avisos usan el emoji personalizado de cada antelación', () => {
+      const [first, second, third] = timeService
+        .getReminders(occurrence)
+        .map((reminder) => buildReminderMessage(reminder, context).content);
+
+      expect(first).toContain(`${icons.get('swords')} **¡KOTH 1 en Boutcraft dentro de 1 hora!**`);
+      expect(second).toContain(`${icons.get('shield')} **¡KOTH 1`);
+      expect(third).toContain(`${icons.get('flame')} **¡KOTH 1`);
+      expect(icons.get('swords')).toMatch(/^<:lc_swords:\d+>$/);
+    });
+
+    it('ningún mensaje ni embed contiene emojis Unicode cuando los iconos están cargados', () => {
+      const [reminder] = timeService.getReminders(occurrence);
+      const texts = [
+        buildReminderMessage(reminder!, context).content,
+        buildReminderMessage(reminder!, contextWithoutMentions).content,
+        buildTestReminderMessage(reminder!, context).content,
+        JSON.stringify(buildNextKothEmbed(occurrence, madrid('2026-11-09T14:45'), context)),
+        JSON.stringify(
+          buildScheduleEmbed(
+            timeService.getNextOccurrencePerSlot(madrid('2026-11-09T12:00')),
+            timeService.reminderOffsetsMinutes,
+            context,
+          ),
+        ),
+        buildNoPermissionMessage(icons),
+        buildReminderNotConfiguredMessage(45, icons),
+        buildTestFailedMessage('123', 'Missing Access', icons),
+        buildTestPublishedMessage(60, '123', icons),
+      ];
+
+      for (const text of texts) {
+        expect(text).not.toMatch(UNICODE_EMOJI);
+      }
+    });
   });
 });

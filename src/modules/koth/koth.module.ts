@@ -3,6 +3,7 @@ import type { Client } from 'discord.js';
 import type { Logger } from 'pino';
 import type { Env } from '../../config/env.js';
 import { kothConfig } from '../../config/koth.config.js';
+import type { IconResolver } from '../../shared/icons/icon-registry.js';
 import type { BotModule } from '../../shared/types/bot-module.js';
 import type { Clock } from '../../shared/types/clock.js';
 import type { SlashCommand } from '../../shared/types/command.js';
@@ -17,6 +18,7 @@ import type { MessageContext } from './templates/koth-messages.js';
 export interface KothCommandsContext {
   readonly env: Env;
   readonly clock: Clock;
+  readonly icons: IconResolver;
 }
 
 export interface KothModuleContext extends KothCommandsContext {
@@ -34,12 +36,12 @@ export function createKothTimeService(timezone: string): KothTimeService {
 }
 
 /** Comandos slash del módulo. No requieren conexión a Discord ni base de datos. */
-export function createKothCommands({ env, clock }: KothCommandsContext): SlashCommand[] {
+export function createKothCommands({ env, clock, icons }: KothCommandsContext): SlashCommand[] {
   return [
     createKothCommand({
       timeService: createKothTimeService(env.TIMEZONE),
       clock,
-      messageContext: toMessageContext(env),
+      messageContext: toMessageContext(env, icons),
       announcementChannelId: env.DISCORD_CHANNEL_ID,
     }),
   ];
@@ -47,13 +49,13 @@ export function createKothCommands({ env, clock }: KothCommandsContext): SlashCo
 
 /** Composición del módulo KOTH: scheduler, persistencia y publicación en Discord. */
 export function createKothModule(context: KothModuleContext): BotModule {
-  const { env, clock, logger } = context;
+  const { env, clock, logger, icons } = context;
   const timeService = createKothTimeService(env.TIMEZONE);
   const repository = new SqliteKothNotificationRepository(context.database);
   const announcer = new DiscordKothAnnouncer({
     client: context.client,
     channelId: env.DISCORD_CHANNEL_ID,
-    messageContext: toMessageContext(env),
+    messageContext: toMessageContext(env, icons),
   });
   const scheduler = new KothSchedulerService({
     timeService,
@@ -97,10 +99,11 @@ export function createKothModule(context: KothModuleContext): BotModule {
   };
 }
 
-function toMessageContext(env: Env): MessageContext {
+function toMessageContext(env: Env, icons: IconResolver): MessageContext {
   return {
     serverIp: env.SERVER_IP,
     timezone: env.TIMEZONE,
     mentionEveryone: kothConfig.mentionEveryone,
+    icons,
   };
 }

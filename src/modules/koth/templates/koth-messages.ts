@@ -1,5 +1,7 @@
 import { type BaseMessageOptions, EmbedBuilder } from 'discord.js';
 import type { DateTime } from 'luxon';
+import type { IconName } from '../../../shared/icons/icon-catalog.js';
+import type { IconResolver } from '../../../shared/icons/icon-registry.js';
 import { toDiscordTimestamp } from '../../../shared/utils/discord-timestamp.js';
 import {
   formatHourMinute,
@@ -16,7 +18,10 @@ import type {
 
 /**
  * Templates de todos los mensajes del módulo KOTH.
- * Para cambiar textos, emojis o colores, este es el único archivo a modificar.
+ * Para cambiar textos, iconos o colores, este es el único archivo a modificar.
+ *
+ * Los iconos son iconos de Lucide (ver `shared/icons/icon-catalog.ts`) y se
+ * obtienen siempre a través de `context.icons`, nunca como emojis literales.
  */
 
 export interface MessageContext {
@@ -24,9 +29,11 @@ export interface MessageContext {
   /** Añade "@everyone @here" al final de los avisos y permite que notifiquen. */
   readonly mentionEveryone: boolean;
   readonly timezone: string;
+  readonly icons: IconResolver;
 }
 
 interface ReminderTemplate {
+  readonly icon: IconName;
   readonly headline: (eventName: string) => string;
   readonly callToAction: string;
 }
@@ -37,18 +44,23 @@ interface ReminderTemplate {
  */
 const REMINDER_TEMPLATES: Record<ReminderOffsetMinutes, ReminderTemplate> = {
   60: {
-    headline: (eventName) => `⚔️ **¡${eventName} en Boutcraft dentro de 1 hora!**`,
-    callToAction: 'Prepara tu kit y reúne a tu equipo: la colina se disputa muy pronto.',
+    icon: 'swords',
+    headline: (eventName) => `**¡${eventName} en Boutcraft dentro de 1 hora!**`,
+    callToAction: 'Vayanse Conectado malditos lambe wesos.',
   },
   30: {
-    headline: (eventName) => `🛡️ **¡${eventName} en Boutcraft dentro de 30 minutos!**`,
-    callToAction: 'Equípate y ve acercándote a la zona. ¡Que no te quiten la colina!',
+    icon: 'shield',
+    headline: (eventName) => `**¡${eventName} en Boutcraft dentro de 30 minutos!**`,
+    callToAction: 'Vengan a darle yupi a la negra de Staylux',
   },
   10: {
-    headline: (eventName) => `🔥 **¡${eventName} en Boutcraft empieza en 10 minutos!**`,
-    callToAction: '¡Última llamada! Entra ya al servidor y toma posiciones.',
+    icon: 'flame',
+    headline: (eventName) => `**¡${eventName} en Boutcraft empieza en 10 minutos!**`,
+    callToAction: '¡Última llamada! Conectecse malditos vecenos y marroquies de kagada.',
   },
 };
+
+const EVERYONE_MENTIONS = '@everyone @here';
 
 /** Aviso automático publicado en el canal de anuncios. */
 export function buildReminderMessage(
@@ -76,34 +88,36 @@ export function buildTestReminderMessage(
   reminder: KothReminder,
   context: MessageContext,
 ): BaseMessageOptions {
+  const { icons } = context;
   const lines = [
-    '🧪 **MENSAJE DE PRUEBA** — así se verá un aviso real (no es un evento)',
+    `${icons.get('flask-conical')} **MENSAJE DE PRUEBA** — así se verá un aviso real (no es un evento)`,
     '',
     buildReminderBody(reminder, context),
   ];
 
   if (context.mentionEveryone) {
-    lines.push('', `${TEST_MENTIONS_NOTE}: \`${EVERYONE_MENTIONS}\``);
+    lines.push(
+      '',
+      `${icons.get('bell')} En un aviso real, aquí se mencionaría a todos: \`${EVERYONE_MENTIONS}\``,
+    );
   }
 
   return { content: lines.join('\n') };
 }
 
-const EVERYONE_MENTIONS = '@everyone @here';
-const TEST_MENTIONS_NOTE = '🔔 En un aviso real, aquí se mencionaría a todos';
-
 function buildReminderBody(reminder: KothReminder, context: MessageContext): string {
+  const { icons } = context;
   const template = REMINDER_TEMPLATES[reminder.offsetMinutes];
   const { startsAt, slot } = reminder.occurrence;
 
   return [
-    template.headline(slot.name),
+    `${icons.get(template.icon)} ${template.headline(slot.name)}`,
     template.callToAction,
     '',
-    `📅 **Fecha:** ${toDiscordTimestamp(startsAt, 'F')}`,
-    `⏳ **Comienza:** ${toDiscordTimestamp(startsAt, 'R')}`,
-    `🕐 **Hora oficial (España):** ${formatLocalTime(startsAt)}`,
-    `🌐 **IP:** \`${context.serverIp}\``,
+    `${icons.get('calendar')} **Fecha:** ${toDiscordTimestamp(startsAt, 'F')}`,
+    `${icons.get('hourglass')} **Comienza:** ${toDiscordTimestamp(startsAt, 'R')}`,
+    `${icons.get('clock')} **Hora oficial (España):** ${formatLocalTime(startsAt)}`,
+    `${icons.get('globe')} **IP:** \`${context.serverIp}\``,
   ].join('\n');
 }
 
@@ -114,35 +128,36 @@ export function buildNextKothEmbed(
   context: MessageContext,
 ): EmbedBuilder {
   const { startsAt, slot } = occurrence;
+  const { icons } = context;
 
   return new EmbedBuilder()
     .setColor(KOTH_EMBED_COLORS.info)
-    .setTitle(`⚔️ Próximo KOTH: ${slot.name}`)
+    .setTitle(`${icons.get('swords')} Próximo KOTH: ${slot.name}`)
     .setDescription(
       `El próximo KOTH de **Boutcraft** comienza ${toDiscordTimestamp(startsAt, 'R')}.`,
     )
     .addFields(
       {
-        name: '🕐 Hora de inicio',
+        name: `${icons.get('clock')} Hora de inicio`,
         value: `**${formatLocalTime(startsAt)}** (España)\n${toDiscordTimestamp(startsAt, 't')} en tu hora local`,
         inline: true,
       },
       {
-        name: '📅 Fecha',
+        name: `${icons.get('calendar')} Fecha`,
         value: toDiscordTimestamp(startsAt, 'D'),
         inline: true,
       },
       {
-        name: '⏳ Tiempo restante',
+        name: `${icons.get('hourglass')} Tiempo restante`,
         value: `${formatRemainingTime(now, startsAt)}\n(${toDiscordTimestamp(startsAt, 'R')})`,
         inline: true,
       },
       {
-        name: '🗓️ Fecha y hora completa',
+        name: `${icons.get('calendar-days')} Fecha y hora completa`,
         value: toDiscordTimestamp(startsAt, 'F'),
       },
       {
-        name: '🌐 IP del servidor',
+        name: `${icons.get('globe')} IP del servidor`,
         value: `\`${context.serverIp}\``,
       },
     )
@@ -156,28 +171,62 @@ export function buildScheduleEmbed(
   reminderOffsetsMinutes: readonly ReminderOffsetMinutes[],
   context: MessageContext,
 ): EmbedBuilder {
+  const { icons } = context;
+
   return new EmbedBuilder()
     .setColor(KOTH_EMBED_COLORS.info)
-    .setTitle('📅 Horarios oficiales de KOTH · Boutcraft')
+    .setTitle(`${icons.get('calendar')} Horarios oficiales de KOTH · Boutcraft`)
     .setDescription(
       [
         'Los KOTH se celebran **todos los días** en estos horarios (hora oficial de España).',
-        `🔔 Avisos automáticos ${formatReminderOffsets(reminderOffsetsMinutes)} antes de cada evento.`,
+        `${icons.get('bell')} Avisos automáticos ${formatReminderOffsets(reminderOffsetsMinutes)} antes de cada evento.`,
       ].join('\n'),
     )
     .addFields(
       ...nextOccurrencePerSlot.map((occurrence) => ({
-        name: `⚔️ ${occurrence.slot.name}`,
+        name: `${icons.get('swords')} ${occurrence.slot.name}`,
         value: [
-          `🕐 **${formatSlotTime(occurrence.slot)}** (España)`,
-          `🌍 Tu hora: ${toDiscordTimestamp(occurrence.startsAt, 't')}`,
-          `⏳ Próximo: ${toDiscordTimestamp(occurrence.startsAt, 'R')}`,
+          `${icons.get('clock')} **${formatSlotTime(occurrence.slot)}** (España)`,
+          `${icons.get('earth')} Tu hora: ${toDiscordTimestamp(occurrence.startsAt, 't')}`,
+          `${icons.get('hourglass')} Próximo: ${toDiscordTimestamp(occurrence.startsAt, 'R')}`,
         ].join('\n'),
         inline: true,
       })),
-      { name: '🌐 IP del servidor', value: `\`${context.serverIp}\`` },
+      { name: `${icons.get('globe')} IP del servidor`, value: `\`${context.serverIp}\`` },
     )
     .setFooter({ text: `Zona horaria oficial: ${context.timezone}` });
+}
+
+/** Respuestas de `/koth prueba`. */
+
+export function buildNoPermissionMessage(icons: IconResolver): string {
+  return `${icons.get('ban')} Solo quien tenga el permiso **Gestionar servidor** puede usar este comando.`;
+}
+
+export function buildReminderNotConfiguredMessage(
+  offsetMinutes: number,
+  icons: IconResolver,
+): string {
+  return `${icons.get('circle-x')} No hay un aviso configurado de ${offsetMinutes} minutos.`;
+}
+
+export function buildTestFailedMessage(
+  channelId: string,
+  reason: string,
+  icons: IconResolver,
+): string {
+  return (
+    `${icons.get('circle-x')} No pude publicar en <#${channelId}>: ${reason}\n` +
+    'Revisa que el bot tenga **Ver canal**, **Enviar mensajes** e **Insertar enlaces** en ese canal.'
+  );
+}
+
+export function buildTestPublishedMessage(
+  offsetMinutes: number,
+  channelId: string,
+  icons: IconResolver,
+): string {
+  return `${icons.get('circle-check')} Mensaje de prueba (aviso de ${offsetMinutes} min) publicado en <#${channelId}>.`;
 }
 
 function formatLocalTime(date: DateTime): string {
