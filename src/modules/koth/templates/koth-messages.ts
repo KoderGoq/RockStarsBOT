@@ -56,7 +56,7 @@ const REMINDER_TEMPLATES: Record<ReminderOffsetMinutes, ReminderTemplate> = {
   10: {
     icon: 'flame',
     headline: (eventName) => `**¡${eventName} en Boutcraft empieza en 10 minutos!**`,
-    callToAction: '¡Última llamada! Conectecse malditos vecenos y marroquies de kagada.',
+    callToAction: '¡Última llamada! Conectense malditos vecenos y marroquies de kagada.',
   },
 };
 
