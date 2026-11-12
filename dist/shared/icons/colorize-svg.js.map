@@ -1,0 +1,1 @@
+{"version":3,"file":"colorize-svg.js","sourceRoot":"","sources":["../../../src/shared/icons/colorize-svg.ts"],"names":[],"mappings":"AAAA;;;GAGG;AACH,MAAM,UAAU,WAAW,CAAC,GAAW,EAAE,KAAa;IACpD,IAAI,CAAC,GAAG,CAAC,QAAQ,CAAC,cAAc,CAAC,EAAE,CAAC;QAClC,MAAM,IAAI,KAAK,CAAC,0DAA0D,CAAC,CAAC;IAC9E,CAAC;IACD,OAAO,GAAG,CAAC,UAAU,CAAC,cAAc,EAAE,KAAK,CAAC,CAAC;AAC/C,CAAC"}

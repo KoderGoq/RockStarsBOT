@@ -1,0 +1,1 @@
+{"version":3,"file":"001-create-koth-notifications.js","sourceRoot":"","sources":["../../../../src/infrastructure/database/migrations/001-create-koth-notifications.ts"],"names":[],"mappings":"AAEA,MAAM,CAAC,MAAM,gCAAgC,GAAc;IACzD,OAAO,EAAE,CAAC;IACV,IAAI,EAAE,2BAA2B;IACjC,EAAE,EAAE;;;;;;;;;;;;;;;GAeH;CACF,CAAC"}

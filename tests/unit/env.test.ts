@@ -12,10 +12,22 @@ describe('parseEnv', () => {
   it('aplica los valores por defecto', () => {
     expect(parseEnv(validEnv)).toMatchObject({
       TIMEZONE: 'Europe/Madrid',
-      SERVER_IP: 'boutcraft.xyz',
+      MINECRAFT_SERVER_IP: 'boutcraft.xyz',
       DATABASE_PATH: './data/boutcraft.sqlite',
       LOG_LEVEL: 'info',
     });
+  });
+
+  it('ignora SERVER_IP: algunos hosts lo reservan y lo rellenan con la IP interna', () => {
+    const env = parseEnv({ ...validEnv, SERVER_IP: '172.18.0.5' });
+
+    expect(env.MINECRAFT_SERVER_IP).toBe('boutcraft.xyz');
+  });
+
+  it('usa MINECRAFT_SERVER_IP cuando se define', () => {
+    expect(
+      parseEnv({ ...validEnv, MINECRAFT_SERVER_IP: 'play.ejemplo.net' }).MINECRAFT_SERVER_IP,
+    ).toBe('play.ejemplo.net');
   });
 
   it('trata las variables vacías como ausentes', () => {

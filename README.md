@@ -69,16 +69,16 @@ Después rellena `.env` con tus valores.
 
 Se validan con **Zod** al arrancar. Si falta alguna o es inválida, el bot no arranca y muestra exactamente qué corregir.
 
-| Variable             | Obligatoria | Por defecto               | Descripción                                                    |
-| -------------------- | :---------: | ------------------------- | -------------------------------------------------------------- |
-| `DISCORD_TOKEN`      |     ✅      | —                         | Token del bot.                                                 |
-| `DISCORD_CLIENT_ID`  |     ✅      | —                         | Application ID.                                                |
-| `DISCORD_GUILD_ID`   |     ✅      | —                         | Servidor donde se registran los comandos.                      |
-| `DISCORD_CHANNEL_ID` |     ✅      | —                         | Canal donde se publican los avisos.                            |
-| `TIMEZONE`           |             | `Europe/Madrid`           | Zona horaria **IANA** oficial (no uses `UTC+1`).               |
-| `SERVER_IP`          |             | `boutcraft.xyz`           | IP que aparece en los mensajes.                                |
-| `DATABASE_PATH`      |             | `./data/boutcraft.sqlite` | Ruta del fichero SQLite (la carpeta se crea sola).             |
-| `LOG_LEVEL`          |             | `info`                    | `fatal`, `error`, `warn`, `info`, `debug`, `trace` o `silent`. |
+| Variable              | Obligatoria | Por defecto               | Descripción                                                                               |
+| --------------------- | :---------: | ------------------------- | ----------------------------------------------------------------------------------------- |
+| `DISCORD_TOKEN`       |     ✅      | —                         | Token del bot.                                                                            |
+| `DISCORD_CLIENT_ID`   |     ✅      | —                         | Application ID.                                                                           |
+| `DISCORD_GUILD_ID`    |     ✅      | —                         | Servidor donde se registran los comandos.                                                 |
+| `DISCORD_CHANNEL_ID`  |     ✅      | —                         | Canal donde se publican los avisos.                                                       |
+| `TIMEZONE`            |             | `Europe/Madrid`           | Zona horaria **IANA** oficial (no uses `UTC+1`).                                          |
+| `MINECRAFT_SERVER_IP` |             | `boutcraft.xyz`           | IP que aparece en los mensajes (no usa el nombre `SERVER_IP`, que muchos hosts reservan). |
+| `DATABASE_PATH`       |             | `./data/boutcraft.sqlite` | Ruta del fichero SQLite (la carpeta se crea sola).                                        |
+| `LOG_LEVEL`           |             | `info`                    | `fatal`, `error`, `warn`, `info`, `debug`, `trace` o `silent`.                            |
 
 > Los horarios, los avisos y los parámetros del scheduler **no** están en `.env`: están centralizados en [`src/config/koth.config.ts`](src/config/koth.config.ts).
 >

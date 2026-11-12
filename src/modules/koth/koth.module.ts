@@ -101,7 +101,7 @@ export function createKothModule(context: KothModuleContext): BotModule {
 
 function toMessageContext(env: Env, icons: IconResolver): MessageContext {
   return {
-    serverIp: env.SERVER_IP,
+    serverIp: env.MINECRAFT_SERVER_IP,
     timezone: env.TIMEZONE,
     mentionEveryone: kothConfig.mentionEveryone,
     icons,

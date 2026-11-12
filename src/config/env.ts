@@ -21,7 +21,9 @@ const envSchema = z.object({
       message: 'TIMEZONE debe ser una zona horaria IANA válida (p. ej. Europe/Madrid)',
     })
     .default('Europe/Madrid'),
-  SERVER_IP: z.string().min(1).default('boutcraft.xyz'),
+  // No se llama SERVER_IP a propósito: muchos hosts reservan ese nombre y lo rellenan
+  // con la IP interna del contenedor, que acabaría publicándose en los avisos.
+  MINECRAFT_SERVER_IP: z.string().min(1).default('boutcraft.xyz'),
 
   DATABASE_PATH: z.string().min(1).default('./data/boutcraft.sqlite'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),

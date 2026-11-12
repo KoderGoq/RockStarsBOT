@@ -1,0 +1,1 @@
+{"version":3,"file":"discord-timestamp.js","sourceRoot":"","sources":["../../../src/shared/utils/discord-timestamp.ts"],"names":[],"mappings":"AAWA,MAAM,UAAU,kBAAkB,CAAC,IAAc,EAAE,KAA4B;IAC7E,OAAO,MAAM,IAAI,CAAC,KAAK,CAAC,IAAI,CAAC,SAAS,EAAE,CAAC,IAAI,KAAK,GAAG,CAAC;AACxD,CAAC"}

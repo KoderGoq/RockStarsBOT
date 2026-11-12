@@ -1,7 +1,11 @@
-# Dependencias y build
+# Dependencias
 node_modules/
-dist/
 coverage/
+
+# OJO: `dist/` SÍ se versiona a propósito. El host (bot-hosting.net) descarga el
+# repositorio y ejecuta `node dist/index.js` sin compilar, porque su disco y su RAM
+# no alcanzan para instalar las herramientas de desarrollo. Ejecuta `pnpm release`
+# antes de cada push para que dist/ esté siempre al día.
 
 # Entorno (nunca subir credenciales)
 .env
