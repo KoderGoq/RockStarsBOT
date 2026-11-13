@@ -46,10 +46,10 @@ No hace falta compilar dependencias nativas: SQLite viene incluido en Node.js.
    - No hace falta activar ningún _Privileged Gateway Intent_.
 4. En **OAuth2 → URL Generator**:
    - Scopes: `bot` y `applications.commands`.
-   - Bot permissions: `View Channels`, `Send Messages`, `Embed Links` y `Mention Everyone` (este último solo si `mentionEveryone` está activo en `koth.config.ts`, que lo está por defecto).
-   - Abre la URL generada e invita el bot a tu servidor. Si lo prefieres, también puedes usar esta plantilla (permisos `150528`):
+   - Bot permissions: `View Channels`, `Send Messages` y `Embed Links`. Si activas `mentionEveryone` en `koth.config.ts` (desactivado por defecto), añade también `Mention Everyone`.
+   - Abre la URL generada e invita el bot a tu servidor. Si lo prefieres, también puedes usar esta plantilla (permisos `19456`):
      ```
-     https://discord.com/oauth2/authorize?client_id=TU_CLIENT_ID&scope=bot+applications.commands&permissions=150528
+     https://discord.com/oauth2/authorize?client_id=TU_CLIENT_ID&scope=bot+applications.commands&permissions=19456
      ```
 5. En Discord, activa **Ajustes → Avanzado → Modo desarrollador** y luego:
    - Haz clic derecho en el servidor → **Copiar ID del servidor**. Es tu `DISCORD_GUILD_ID`.
@@ -82,7 +82,7 @@ Se validan con **Zod** al arrancar. Si falta alguna o es inválida, el bot no ar
 
 > Los horarios, los avisos y los parámetros del scheduler **no** están en `.env`: están centralizados en [`src/config/koth.config.ts`](src/config/koth.config.ts).
 >
-> Cada aviso termina con `@everyone @here`. Para desactivarlo, pon `mentionEveryone: false` en ese mismo archivo. Los mensajes de `/koth prueba` nunca notifican a nadie.
+> Los avisos **no** mencionan a nadie (`mentionEveryone: false`); las menciones a `@everyone` y `@here` se hacen a mano. Para que cada aviso termine con `@everyone @here`, pon `mentionEveryone: true` en ese mismo archivo. Los mensajes de `/koth prueba` nunca notifican a nadie.
 
 ## Registro de comandos slash
 

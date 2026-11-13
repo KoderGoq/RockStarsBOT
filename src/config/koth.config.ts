@@ -19,10 +19,11 @@ const rawKothConfig = {
   reminderOffsetsMinutes: [60, 30, 10],
   /**
    * Si es `true`, cada aviso termina con "@everyone @here" y notifica a todos.
-   * El bot necesita el permiso "Mencionar a @everyone, @here y todos los roles"
+   * Ahora está desactivado: esas menciones se hacen a mano. Si se vuelve a activar,
+   * el bot necesita el permiso "Mencionar a @everyone, @here y todos los roles"
    * en el canal de avisos.
    */
-  mentionEveryone: true,
+  mentionEveryone: false,
   scheduler: {
     /** Frecuencia con la que el scheduler revisa si hay avisos pendientes. */
     pollIntervalMs: 10_000,
