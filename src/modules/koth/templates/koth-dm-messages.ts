@@ -143,6 +143,8 @@ export function buildSubscribeResultReply(result: SubscribeResult, icons: IconRe
   switch (result.kind) {
     case 'subscribed':
       return buildSubscribedReply(icons);
+    case 'subscribed-unconfirmed':
+      return buildSubscribedUnconfirmedReply(icons);
     case 'already-subscribed':
       return buildAlreadySubscribedReply(icons);
     case 'dms-closed':
@@ -150,6 +152,14 @@ export function buildSubscribeResultReply(result: SubscribeResult, icons: IconRe
     case 'unavailable':
       return buildSubscriptionUnavailableReply(icons);
   }
+}
+
+function buildSubscribedUnconfirmedReply(icons: IconResolver): string {
+  return (
+    `${icons.get('circle-check')} Te has suscrito. Discord limita los mensajes privados seguidos y ` +
+    'no he podido enviarte ahora el mensaje de confirmación, pero recibirás los avisos igualmente.\n' +
+    'Para recibirlos necesitas tener abiertos los **mensajes directos** de este servidor.'
+  );
 }
 
 /** Respuesta a usar `/koth suscribirme` o `/koth cancelar` fuera del canal de suscripción. */

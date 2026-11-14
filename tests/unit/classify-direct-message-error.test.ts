@@ -1,17 +1,7 @@
-import { DiscordAPIError, RESTJSONErrorCodes } from 'discord.js';
+import { RESTJSONErrorCodes } from 'discord.js';
 import { describe, expect, it } from 'vitest';
 import { classifyDirectMessageError } from '../../src/modules/koth/services/classify-direct-message-error.js';
-
-function discordError(code: number): DiscordAPIError {
-  return new DiscordAPIError(
-    { code, message: `error ${code}` },
-    code,
-    400,
-    'POST',
-    'https://discord.com/api/v10/test',
-    { body: undefined, files: undefined },
-  );
-}
+import { discordError } from '../helpers/discord-errors.js';
 
 describe('classifyDirectMessageError', () => {
   it.each([

@@ -43,6 +43,7 @@ export function createKothModule(context) {
         client,
         guildId: env.DISCORD_GUILD_ID,
         messageContext,
+        logger,
     });
     const subscriptions = new KothSubscriptionService({
         subscribers: subscriberRepository,

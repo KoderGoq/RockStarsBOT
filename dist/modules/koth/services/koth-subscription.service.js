@@ -18,6 +18,10 @@ export class KothSubscriptionService {
                 return subscribers.add(userId, clock.now())
                     ? { kind: 'subscribed' }
                     : { kind: 'already-subscribed' };
+            case 'rate-limited':
+                return subscribers.add(userId, clock.now())
+                    ? { kind: 'subscribed-unconfirmed' }
+                    : { kind: 'already-subscribed' };
             case 'dms-closed':
                 return { kind: 'dms-closed' };
             default:

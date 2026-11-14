@@ -33,20 +33,41 @@ describe('KothSubscriptionService', () => {
     expect(harness.subscribers.has('u1')).toBe(false);
   });
 
-  it.each([
-    { kind: 'rate-limited' as const },
-    { kind: 'failed' as const, error: new Error('boom') },
-    { kind: 'not-member' as const },
-  ])('con el resultado "$kind" no suscribe y pide reintentar', async (outcome) => {
+  it('si Discord limita los MD seguidos, suscribe igualmente y lo indica', async () => {
     const messenger = new FakeDirectMessenger();
-    messenger.setConfirmationOutcome(outcome);
+    messenger.setConfirmationOutcome({ kind: 'rate-limited' });
     const harness = createDmHarness({ messenger });
 
     const result = await harness.subscriptions.subscribe('u1');
 
-    expect(result).toEqual({ kind: 'unavailable' });
-    expect(harness.subscribers.has('u1')).toBe(false);
+    expect(result).toEqual({ kind: 'subscribed-unconfirmed' });
+    expect(harness.subscribers.has('u1')).toBe(true);
   });
+
+  it('un suscrito sin confirmar recibe el aviso real como cualquier otro', async () => {
+    const messenger = new FakeDirectMessenger();
+    messenger.setConfirmationOutcome({ kind: 'rate-limited' });
+    const harness = createDmHarness({ messenger });
+    await harness.subscriptions.subscribe('u1');
+
+    await harness.dispatcher.run();
+
+    expect(messenger.deliveredTo).toEqual(['u1']);
+  });
+
+  it.each([{ kind: 'failed' as const, error: new Error('boom') }, { kind: 'not-member' as const }])(
+    'con el resultado "$kind" no suscribe y pide reintentar',
+    async (outcome) => {
+      const messenger = new FakeDirectMessenger();
+      messenger.setConfirmationOutcome(outcome);
+      const harness = createDmHarness({ messenger });
+
+      const result = await harness.subscriptions.subscribe('u1');
+
+      expect(result).toEqual({ kind: 'unavailable' });
+      expect(harness.subscribers.has('u1')).toBe(false);
+    },
+  );
 
   it('dos peticiones simultáneas dan de alta una sola vez', async () => {
     const messenger = new FakeDirectMessenger();
