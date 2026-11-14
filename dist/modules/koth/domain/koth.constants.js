@@ -1,4 +1,9 @@
 export const KOTH_COMMAND_NAME = 'koth';
+/** Identificadores de los botones del panel de suscripción. */
+export const KOTH_SUBSCRIBE_BUTTON_ID = 'koth:subscribe';
+export const KOTH_UNSUBSCRIBE_BUTTON_ID = 'koth:unsubscribe';
+/** Clave con la que se recuerda el mensaje del panel de suscripción. */
+export const SUBSCRIPTION_PANEL_KEY = 'koth-subscription-panel';
 /** Los siete días de la semana, de lunes (1) a domingo (7). */
 export const ALL_WEEKDAYS = [1, 2, 3, 4, 5, 6, 7];
 /** Estado de un aviso registrado en la persistencia. */

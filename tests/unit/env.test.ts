@@ -41,6 +41,17 @@ describe('parseEnv', () => {
     );
   });
 
+  it('el canal de suscripción es opcional y, si se define, debe ser un ID de Discord válido', () => {
+    expect(parseEnv(validEnv).DISCORD_SUBSCRIPTION_CHANNEL_ID).toBeUndefined();
+    expect(
+      parseEnv({ ...validEnv, DISCORD_SUBSCRIPTION_CHANNEL_ID: '1570918164261376220' })
+        .DISCORD_SUBSCRIPTION_CHANNEL_ID,
+    ).toBe('1570918164261376220');
+    expect(() => parseEnv({ ...validEnv, DISCORD_SUBSCRIPTION_CHANNEL_ID: 'comandos' })).toThrow(
+      /DISCORD_SUBSCRIPTION_CHANNEL_ID/,
+    );
+  });
+
   it('trata las variables vacías como ausentes', () => {
     expect(parseEnv({ ...validEnv, TIMEZONE: '', LOG_LEVEL: '  ' }).TIMEZONE).toBe('Europe/Madrid');
   });

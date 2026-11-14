@@ -79,17 +79,18 @@ Después rellena `.env` con tus valores.
 
 Se validan con **Zod** al arrancar. Si falta alguna o es inválida, el bot no arranca y muestra exactamente qué corregir.
 
-| Variable                   | Obligatoria | Por defecto               | Descripción                                                                                            |
-| -------------------------- | :---------: | ------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `DISCORD_TOKEN`            |     ✅      | —                         | Token del bot.                                                                                         |
-| `DISCORD_CLIENT_ID`        |     ✅      | —                         | Application ID.                                                                                        |
-| `DISCORD_GUILD_ID`         |     ✅      | —                         | Servidor donde se registran los comandos.                                                              |
-| `DISCORD_CHANNEL_ID`       |     ✅      | —                         | Canal donde se publican los avisos.                                                                    |
-| `DISCORD_VOICE_CHANNEL_ID` |             | —                         | Canal de voz ("el call") que se enlaza en los MD. Si falta, el MD dice "el canal de voz del servidor". |
-| `TIMEZONE`                 |             | `Europe/Madrid`           | Zona horaria **IANA** oficial (no uses `UTC+1`).                                                       |
-| `MINECRAFT_SERVER_IP`      |             | `boutcraft.xyz`           | IP que aparece en los mensajes (no usa el nombre `SERVER_IP`, que muchos hosts reservan).              |
-| `DATABASE_PATH`            |             | `./data/boutcraft.sqlite` | Ruta del fichero SQLite (la carpeta se crea sola).                                                     |
-| `LOG_LEVEL`                |             | `info`                    | `fatal`, `error`, `warn`, `info`, `debug`, `trace` o `silent`.                                         |
+| Variable                          | Obligatoria | Por defecto               | Descripción                                                                                                                                                                                     |
+| --------------------------------- | :---------: | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DISCORD_TOKEN`                   |     ✅      | —                         | Token del bot.                                                                                                                                                                                  |
+| `DISCORD_CLIENT_ID`               |     ✅      | —                         | Application ID.                                                                                                                                                                                 |
+| `DISCORD_GUILD_ID`                |     ✅      | —                         | Servidor donde se registran los comandos.                                                                                                                                                       |
+| `DISCORD_CHANNEL_ID`              |     ✅      | —                         | Canal donde se publican los avisos.                                                                                                                                                             |
+| `DISCORD_VOICE_CHANNEL_ID`        |             | —                         | Canal de voz ("el call") que se enlaza en los MD. Si falta, el MD dice "el canal de voz del servidor".                                                                                          |
+| `DISCORD_SUBSCRIPTION_CHANNEL_ID` |             | —                         | Canal exclusivo de suscripción: ahí funcionan `/koth suscribirme` y `/koth cancelar` y ahí se publica el panel con botones. Si falta, los comandos funcionan en cualquier canal y no hay panel. |
+| `TIMEZONE`                        |             | `Europe/Madrid`           | Zona horaria **IANA** oficial (no uses `UTC+1`).                                                                                                                                                |
+| `MINECRAFT_SERVER_IP`             |             | `boutcraft.xyz`           | IP que aparece en los mensajes (no usa el nombre `SERVER_IP`, que muchos hosts reservan).                                                                                                       |
+| `DATABASE_PATH`                   |             | `./data/boutcraft.sqlite` | Ruta del fichero SQLite (la carpeta se crea sola).                                                                                                                                              |
+| `LOG_LEVEL`                       |             | `info`                    | `fatal`, `error`, `warn`, `info`, `debug`, `trace` o `silent`.                                                                                                                                  |
 
 > Los horarios, los avisos y los parámetros del scheduler **no** están en `.env`: están centralizados en [`src/config/koth.config.ts`](src/config/koth.config.ts).
 >
@@ -110,8 +111,9 @@ Solo hay que repetirlo cuando cambian los comandos (nombres, descripciones u opc
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `/koth siguiente`                | Próximo KOTH: hora de inicio, fecha, tiempo restante y timestamp dinámico.                                           |
 | `/koth horarios`                 | Los tres horarios oficiales, con la hora local de cada usuario y la cuenta atrás.                                    |
-| `/koth suscribirme`              | Te suscribes para recibir un MD del bot 10 minutos antes de cada KOTH.                                               |
-| `/koth cancelar`                 | Dejas de recibir esos MD.                                                                                            |
+| `/koth suscribirme`              | Te suscribes para recibir un MD del bot 10 minutos antes de cada KOTH. _(Solo en el canal de suscripción.)_          |
+| `/koth cancelar`                 | Dejas de recibir esos MD. _(Solo en el canal de suscripción.)_                                                       |
+| `/koth panel`                    | _(Gestionar servidor)_ Publica (o actualiza) en el canal de suscripción el mensaje con los botones.                  |
 | `/koth suscriptores`             | _(Gestionar servidor)_ Lista de miembros suscritos.                                                                  |
 | `/koth quitar usuario:@miembro`  | _(Gestionar servidor)_ Da de baja a un suscriptor.                                                                   |
 | `/koth prueba [aviso] [destino]` | _(Gestionar servidor)_ Muestra cómo se ven los mensajes: en el canal de avisos o, con `destino:md`, en tu propio MD. |
@@ -122,7 +124,11 @@ Los miembros eligen recibirlos: nadie recibe un MD sin haberse suscrito antes. E
 
 **Qué reciben.** 10 minutos antes de cada KOTH (`directMessages.offsetMinutes` en [`koth.config.ts`](src/config/koth.config.ts)): el KOTH que va a empezar, una invitación a conectarse al call (enlazando `DISCORD_VOICE_CHANNEL_ID` si está configurado), la cuenta atrás con el timestamp de Discord, la hora, la IP y cómo darse de baja. La cuenta atrás es el timestamp relativo de Discord ("en 10 minutos"), que se actualiza solo.
 
-**Cómo se suscriben.** Con `/koth suscribirme`. El bot envía un MD de confirmación, lo que además comprueba que tienen los MD abiertos. Si no pudo escribirles, no los suscribe y les explica cómo activarlos.
+**Cómo se suscriben.** Con `/koth suscribirme` o con el botón **Suscribirme** del panel. El bot envía un MD de confirmación, lo que además comprueba que tienen los MD abiertos. Si no pudo escribirles, no los suscribe y les explica cómo activarlos.
+
+**Canal exclusivo.** Con `DISCORD_SUBSCRIPTION_CHANNEL_ID`, `/koth suscribirme` y `/koth cancelar` solo funcionan en ese canal (o en un hilo suyo); en cualquier otro, el bot responde en privado indicando dónde ir. Así el resto de canales no se llena de comandos. Los botones del panel viven en ese mismo canal.
+
+**El panel.** Un administrador ejecuta `/koth panel` una vez: el bot publica en el canal de suscripción un mensaje con los botones _Suscribirme_ y _Cancelar suscripción_. Si se vuelve a ejecutar, **actualiza** ese mismo mensaje en lugar de publicar otro (el bot recuerda cuál es en SQLite). Nunca se publica solo al arrancar. El bot necesita _Ver canal_, _Enviar mensajes_ e _Insertar enlaces_ en ese canal.
 
 **Cuándo se da de baja a alguien automáticamente.**
 
@@ -282,6 +288,7 @@ El timestamp representa el **inicio exacto del KOTH**, no el momento del envío.
 - Tabla `koth_notifications`: un registro por aviso, con estado `processing`, `sent` o `skipped`, motivo de omisión e ID del mensaje de Discord.
 - Tabla `koth_dm_subscribers`: los miembros suscritos a los MD (ID de usuario, fecha de alta y fallos seguidos).
 - Tabla `koth_dm_deliveries`: un registro por (aviso, usuario) con el estado del MD (`sent`, `unreachable`, `left`, `failed`).
+- Tabla `koth_panel_messages`: qué mensaje es el panel de suscripción, para actualizarlo en su sitio.
 - El historial de más de **30 días** se depura al arrancar.
 
 **Garantía de entrega:** el sistema prioriza **no duplicar**. Si el proceso muere justo entre el envío a Discord y la confirmación en la base de datos, el aviso queda en `processing` y no se reenvía. Es preferible perder ese aviso concreto a publicarlo dos veces.

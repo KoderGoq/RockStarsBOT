@@ -1,5 +1,4 @@
-import { MessageFlags } from 'discord.js';
-const COMMAND_ERROR_TEXT = 'Ha ocurrido un error al ejecutar el comando. Inténtalo de nuevo en unos instantes.';
+import { replyWithError } from '../interactions/reply-with-error.js';
 /** Registro y despacho de comandos slash con manejo centralizado de errores. */
 export class CommandRegistry {
     icons;
@@ -27,24 +26,7 @@ export class CommandRegistry {
         }
         catch (error) {
             this.logger.error({ err: error, command: interaction.commandName, user: interaction.user.id }, 'Error al ejecutar comando');
-            await this.replyWithError(interaction);
-        }
-    }
-    async replyWithError(interaction) {
-        const payload = {
-            content: `${this.icons.get('circle-x')} ${COMMAND_ERROR_TEXT}`,
-            flags: MessageFlags.Ephemeral,
-        };
-        try {
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp(payload);
-            }
-            else {
-                await interaction.reply(payload);
-            }
-        }
-        catch (error) {
-            this.logger.error({ err: error }, 'No se pudo notificar el error al usuario');
+            await replyWithError(interaction, this.icons, this.logger);
         }
     }
 }

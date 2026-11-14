@@ -88,6 +88,18 @@ describe('MD de KOTH para suscriptores', () => {
     expect(content).toContain(real);
   });
 
+  it('los MD indican dónde darse de baja: el canal de suscripción si hay uno configurado', () => {
+    const withChannel = createMessageContext({ subscriptionChannelId: '1570918164261376220' });
+
+    const real = buildDirectReminderMessage(reminder!, withChannel).content;
+    const confirmation = buildSubscriptionConfirmationDm(withChannel).content;
+    const withoutChannel = buildDirectReminderMessage(reminder!, context).content;
+
+    expect(real).toContain('<#1570918164261376220>');
+    expect(confirmation).toContain('<#1570918164261376220>');
+    expect(withoutChannel).toContain('usa `/koth cancelar` en el servidor');
+  });
+
   it('el MD de confirmación explica cómo cancelar', () => {
     const { content } = buildSubscriptionConfirmationDm(context);
 

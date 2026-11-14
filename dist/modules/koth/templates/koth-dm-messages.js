@@ -1,12 +1,22 @@
-import { EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, } from 'discord.js';
 import { DateTime } from 'luxon';
+import { toComponentEmoji } from '../../../shared/icons/component-emoji.js';
 import { toDiscordTimestamp } from '../../../shared/utils/discord-timestamp.js';
-import { KOTH_EMBED_COLORS } from '../domain/koth.constants.js';
+import { KOTH_EMBED_COLORS, KOTH_SUBSCRIBE_BUTTON_ID, KOTH_UNSUBSCRIBE_BUTTON_ID, } from '../domain/koth.constants.js';
 /**
- * Templates de los mensajes privados (MD) y de las respuestas de los comandos de
- * suscripción. Como en `koth-messages.ts`, los iconos se piden siempre a `icons`.
+ * Templates de los mensajes privados (MD), del panel de suscripción y de las respuestas de
+ * los comandos y botones de suscripción. Como en `koth-messages.ts`, los iconos se piden
+ * siempre a `icons`.
  */
-const UNSUBSCRIBE_HINT = 'Recibes este mensaje porque te suscribiste. Para dejar de recibirlo, usa `/koth cancelar` en el servidor.';
+/** Cómo darse de baja desde un MD: el comando solo funciona en el canal de suscripción. */
+function describeHowToCancel(context) {
+    return context.subscriptionChannelId === null
+        ? 'usa `/koth cancelar` en el servidor'
+        : `usa \`/koth cancelar\` o el botón de <#${context.subscriptionChannelId}>`;
+}
+function buildUnsubscribeHint(context) {
+    return `Recibes este mensaje porque te suscribiste. Para dejar de recibirlo, ${describeHowToCancel(context)}.`;
+}
 /** Máximo de caracteres de la descripción de un embed (el límite de Discord es 4096). */
 const EMBED_DESCRIPTION_BUDGET = 3_800;
 // --- Mensajes privados ------------------------------------------------------
@@ -24,7 +34,7 @@ export function buildDirectReminderMessage(reminder, context) {
         `${icons.get('calendar')} **Hora:** ${toDiscordTimestamp(startsAt, 'F')}`,
         `${icons.get('globe')} **IP:** \`${context.serverIp}\``,
         '',
-        `-# ${icons.get('bell')} ${UNSUBSCRIBE_HINT}`,
+        `-# ${icons.get('bell')} ${buildUnsubscribeHint(context)}`,
     ].join('\n');
     return { content };
 }
@@ -43,7 +53,7 @@ export function buildSubscriptionConfirmationDm(context) {
             `${icons.get('circle-check')} **¡Listo, estás suscrito a los avisos de KOTH!**`,
             `Te escribiré por aquí unos minutos antes de que empiece cada KOTH de Boutcraft.`,
             '',
-            `-# ${icons.get('bell')} Para dejar de recibirlos, usa \`/koth cancelar\` en el servidor.`,
+            `-# ${icons.get('bell')} Para dejar de recibirlos, ${describeHowToCancel(context)}.`,
         ].join('\n'),
     };
 }
@@ -52,7 +62,56 @@ function describeVoiceChannel(context) {
         ? 'el canal de voz del servidor'
         : `<#${context.voiceChannelId}>`;
 }
-// --- Respuestas de /koth suscribirme y /koth cancelar -----------------------
+// --- Panel de suscripción (mensaje con botones) -------------------------------
+/**
+ * Mensaje fijo del canal de suscripción: explica el servicio y ofrece los botones para
+ * suscribirse y darse de baja.
+ */
+export function buildSubscriptionPanelMessage(context) {
+    const { icons } = context;
+    const embed = new EmbedBuilder()
+        .setColor(KOTH_EMBED_COLORS.info)
+        .setTitle(`${icons.get('bell')} Avisos de KOTH por mensaje privado`)
+        .setDescription([
+        'Suscríbete y el bot te escribirá por **MD** poco antes de que empiece cada KOTH, para que no se te pase.',
+        '',
+        `${icons.get('headset')} Te dirá qué KOTH va a empezar, cuánto falta y a qué call conectarte.`,
+        `${icons.get('circle-check')} Solo recibirás MD si te suscribes aquí. Puedes darte de baja cuando quieras.`,
+        '',
+        `${icons.get('circle-x')} Necesitas tener abiertos los **mensajes directos** de este servidor. Si no, el bot no podrá escribirte.`,
+    ].join('\n'));
+    const buttons = new ActionRowBuilder().addComponents(new ButtonBuilder()
+        .setCustomId(KOTH_SUBSCRIBE_BUTTON_ID)
+        .setLabel('Suscribirme')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji(toComponentEmoji(icons.get('bell'))), new ButtonBuilder()
+        .setCustomId(KOTH_UNSUBSCRIBE_BUTTON_ID)
+        .setLabel('Cancelar suscripción')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji(toComponentEmoji(icons.get('circle-x'))));
+    return { embeds: [embed], components: [buttons] };
+}
+// --- Respuestas de /koth suscribirme, /koth cancelar y sus botones ----------
+/** Respuesta a suscribirse, la misma para el comando y para el botón. */
+export function buildSubscribeResultReply(result, icons) {
+    switch (result.kind) {
+        case 'subscribed':
+            return buildSubscribedReply(icons);
+        case 'already-subscribed':
+            return buildAlreadySubscribedReply(icons);
+        case 'dms-closed':
+            return buildDmsClosedReply(icons);
+        case 'unavailable':
+            return buildSubscriptionUnavailableReply(icons);
+    }
+}
+/** Respuesta a usar `/koth suscribirme` o `/koth cancelar` fuera del canal de suscripción. */
+export function buildWrongChannelReply(channelId, icons) {
+    return `${icons.get('ban')} Este comando solo funciona en <#${channelId}>. Ve allí para suscribirte o darte de baja.`;
+}
+export function buildUnknownButtonReply(icons) {
+    return `${icons.get('circle-x')} Este botón ya no está disponible.`;
+}
 export function buildSubscribedReply(icons) {
     return `${icons.get('circle-check')} Te has suscrito. Te escribiré por MD unos minutos antes de cada KOTH. Te acabo de enviar un mensaje de confirmación.`;
 }
@@ -103,6 +162,19 @@ export function buildSubscriberRemovedReply(userId, icons) {
 }
 export function buildSubscriberNotFoundReply(userId, icons) {
     return `${icons.get('circle-x')} <@${userId}> no estaba suscrito.`;
+}
+// --- Respuestas de /koth panel ----------------------------------------------
+export function buildPanelNotConfiguredReply(icons) {
+    return (`${icons.get('circle-x')} No hay un canal de suscripción configurado. ` +
+        'Define `DISCORD_SUBSCRIPTION_CHANNEL_ID` y reinicia el bot.');
+}
+export function buildPanelPublishedReply(kind, channelId, icons) {
+    const action = kind === 'created' ? 'publicado' : 'actualizado';
+    return `${icons.get('circle-check')} Panel de suscripción ${action} en <#${channelId}>.`;
+}
+export function buildPanelFailedReply(channelId, reason, icons) {
+    return (`${icons.get('circle-x')} No pude publicar el panel en <#${channelId}>: ${reason}\n` +
+        'Revisa que el bot tenga **Ver canal**, **Enviar mensajes** e **Insertar enlaces** en ese canal.');
 }
 // --- Respuestas de /koth prueba destino:md ----------------------------------
 export function buildPreviewSentReply(icons) {

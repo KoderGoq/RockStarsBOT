@@ -1,6 +1,7 @@
 import { createDiscordClient } from './core/client.js';
 import { CommandRegistry } from './core/commands/command-registry.js';
 import { loadApplicationIcons } from './core/icons/load-application-icons.js';
+import { ButtonRegistry } from './core/interactions/button-registry.js';
 import { createLogger } from './core/logger.js';
 import { registerInteractionCreateEvent } from './events/interaction-create.event.js';
 import { registerReadyEvent } from './events/ready.event.js';
@@ -17,7 +18,8 @@ export function createApp(env, options) {
     const icons = new IconRegistry();
     const bundles = createModules({ env, clock, icons, client, database, logger });
     const modules = bundles.map((bundle) => bundle.module);
-    const registry = new CommandRegistry(bundles.flatMap((bundle) => bundle.commands), icons, logger);
+    const commands = new CommandRegistry(bundles.flatMap((bundle) => bundle.commands), icons, logger);
+    const buttons = new ButtonRegistry(bundles.flatMap((bundle) => bundle.buttons), icons, logger);
     let stopped = false;
     async function startModules() {
         try {
@@ -50,7 +52,7 @@ export function createApp(env, options) {
         logger.info('Bot detenido');
     }
     registerReadyEvent(client, { logger, onReady: startModules });
-    registerInteractionCreateEvent(client, registry);
+    registerInteractionCreateEvent(client, { commands, buttons });
     return {
         logger,
         async start() {

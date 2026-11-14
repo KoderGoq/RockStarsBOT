@@ -12,6 +12,18 @@ export interface KothAnnouncer {
   announce(reminder: KothReminder): Promise<AnnouncementResult>;
 }
 
+/**
+ * Puerto de salida para publicar el panel de suscripción (el mensaje con los botones).
+ * Qué lleva el mensaje lo decide el adaptador; el servicio solo gestiona cuál es.
+ */
+export interface KothSubscriptionPanelGateway {
+  /** Publica un panel nuevo en el canal. */
+  create(channelId: string): Promise<{ readonly messageId: string }>;
+
+  /** Actualiza un panel existente. Devuelve `false` si el mensaje ya no existe. */
+  update(channelId: string, messageId: string): Promise<boolean>;
+}
+
 /** Resultado de intentar escribir un MD. Los fallos esperables no son excepciones. */
 export type DirectMessageOutcome =
   | { readonly kind: 'sent'; readonly messageId: string }

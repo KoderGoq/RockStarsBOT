@@ -1,41 +1,48 @@
 import { MessageFlags } from 'discord.js';
-import type { IconResolver } from '../../../shared/icons/icon-registry.js';
 import type { SlashSubcommand } from '../../../shared/types/command.js';
-import type { SubscribeResult } from '../services/koth-subscription.service.js';
 import {
-  buildAlreadySubscribedReply,
-  buildDmsClosedReply,
   buildNotSubscribedReply,
-  buildSubscribedReply,
-  buildSubscriptionUnavailableReply,
+  buildSubscribeResultReply,
   buildUnsubscribedReply,
 } from '../templates/koth-dm-messages.js';
+import { ensureInSubscriptionChannel } from './koth-channel-guard.js';
 import type { KothCommandDependencies } from './koth-command.dependencies.js';
 
-/** `/koth suscribirme`: el miembro pide recibir un MD antes de cada KOTH. */
+/**
+ * `/koth suscribirme`: el miembro pide recibir un MD antes de cada KOTH.
+ * Solo funciona en el canal de suscripción, si hay uno configurado.
+ */
 export function createKothSubscribeSubcommand(deps: KothCommandDependencies): SlashSubcommand {
-  const { icons } = deps.messageContext;
+  const { messageContext } = deps;
 
   return {
     name: 'suscribirme',
     description: 'Recibe un mensaje privado del bot unos minutos antes de cada KOTH',
     async execute(interaction) {
+      if (!(await ensureInSubscriptionChannel(interaction, messageContext))) return;
+
       // Escribir el MD de confirmación puede tardar más de los 3 s que da Discord.
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const result = await deps.subscriptions.subscribe(interaction.user.id);
-      await interaction.editReply(describeSubscribeResult(result, icons));
+      await interaction.editReply(buildSubscribeResultReply(result, messageContext.icons));
     },
   };
 }
 
-/** `/koth cancelar`: el miembro deja de recibir los MD. */
+/**
+ * `/koth cancelar`: el miembro deja de recibir los MD.
+ * Solo funciona en el canal de suscripción, si hay uno configurado.
+ */
 export function createKothUnsubscribeSubcommand(deps: KothCommandDependencies): SlashSubcommand {
-  const { icons } = deps.messageContext;
+  const { messageContext } = deps;
+  const { icons } = messageContext;
 
   return {
     name: 'cancelar',
     description: 'Deja de recibir los mensajes privados de KOTH',
     async execute(interaction) {
+      if (!(await ensureInSubscriptionChannel(interaction, messageContext))) return;
+
       const removed = deps.subscriptions.unsubscribe(interaction.user.id);
       await interaction.reply({
         content: removed ? buildUnsubscribedReply(icons) : buildNotSubscribedReply(icons),
@@ -43,17 +50,4 @@ export function createKothUnsubscribeSubcommand(deps: KothCommandDependencies): 
       });
     },
   };
-}
-
-function describeSubscribeResult(result: SubscribeResult, icons: IconResolver): string {
-  switch (result.kind) {
-    case 'subscribed':
-      return buildSubscribedReply(icons);
-    case 'already-subscribed':
-      return buildAlreadySubscribedReply(icons);
-    case 'dms-closed':
-      return buildDmsClosedReply(icons);
-    case 'unavailable':
-      return buildSubscriptionUnavailableReply(icons);
-  }
 }

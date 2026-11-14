@@ -25,6 +25,7 @@ export function createMessageContext(overrides: Partial<MessageContext> = {}): M
     mentionEveryone: false,
     icons: createLoadedIconRegistry(),
     voiceChannelId: null,
+    subscriptionChannelId: null,
     ...overrides,
   };
 }

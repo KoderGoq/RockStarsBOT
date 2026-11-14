@@ -16,6 +16,11 @@ const envSchema = z.object({
   DISCORD_CHANNEL_ID: discordSnowflake('DISCORD_CHANNEL_ID'),
   /** Canal de voz ("el call") al que se invita a conectarse en los MD. Opcional. */
   DISCORD_VOICE_CHANNEL_ID: discordSnowflake('DISCORD_VOICE_CHANNEL_ID').optional(),
+  /**
+   * Canal exclusivo para suscribirse a los MD de KOTH. Si se define, `/koth suscribirme` y
+   * `/koth cancelar` solo funcionan ahí, y el panel con botones se publica en él. Opcional.
+   */
+  DISCORD_SUBSCRIPTION_CHANNEL_ID: discordSnowflake('DISCORD_SUBSCRIPTION_CHANNEL_ID').optional(),
 
   TIMEZONE: z
     .string()

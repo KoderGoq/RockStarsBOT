@@ -35,6 +35,8 @@ export interface MessageContext {
   readonly icons: IconResolver;
   /** Canal de voz ("el call") al que se invita a conectarse en los MD; `null` si no se ha configurado. */
   readonly voiceChannelId: string | null;
+  /** Canal exclusivo de suscripción; `null` si no se ha configurado (entonces no hay restricción). */
+  readonly subscriptionChannelId: string | null;
 }
 
 interface ReminderTemplate {

@@ -1,0 +1,1 @@
+{"version":3,"file":"003-create-koth-panel-messages.js","sourceRoot":"","sources":["../../../../src/infrastructure/database/migrations/003-create-koth-panel-messages.ts"],"names":[],"mappings":"AAEA,MAAM,CAAC,MAAM,gCAAgC,GAAc;IACzD,OAAO,EAAE,CAAC;IACV,IAAI,EAAE,4BAA4B;IAClC,EAAE,EAAE;;;;;;;;;GASH;CACF,CAAC"}

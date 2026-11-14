@@ -8,14 +8,19 @@ import type { BotModuleBundle } from '../../shared/types/bot-module.js';
 import type { Clock } from '../../shared/types/clock.js';
 import { PollingTask } from '../../shared/utils/polling-task.js';
 import { sleep } from '../../shared/utils/sleep.js';
+import { createKothSubscriptionButtons } from './buttons/koth-subscription.buttons.js';
+import type { KothCommandDependencies } from './commands/koth-command.dependencies.js';
 import { createKothCommand } from './commands/koth.command.js';
 import { SqliteKothDmDeliveryRepository } from './repositories/sqlite-koth-dm-delivery.repository.js';
 import { SqliteKothNotificationRepository } from './repositories/sqlite-koth-notification.repository.js';
+import { SqliteKothPanelMessageRepository } from './repositories/sqlite-koth-panel-message.repository.js';
 import { SqliteKothSubscriberRepository } from './repositories/sqlite-koth-subscriber.repository.js';
 import { KothDmDispatcherService } from './services/koth-dm-dispatcher.service.js';
 import { DiscordKothDirectMessenger } from './services/koth-direct-message.service.js';
 import { DiscordKothAnnouncer } from './services/koth-notification.service.js';
+import { DiscordKothSubscriptionPanelGateway } from './services/koth-panel-message.service.js';
 import { KothSchedulerService } from './services/koth-scheduler.service.js';
+import { KothSubscriptionPanelService } from './services/koth-subscription-panel.service.js';
 import { KothSubscriptionService } from './services/koth-subscription.service.js';
 import { KothTimeService } from './services/koth-time.service.js';
 import type { MessageContext } from './templates/koth-messages.js';
@@ -67,6 +72,29 @@ export function createKothModule(context: KothModuleContext): BotModuleBundle {
     clock,
   });
 
+  // El panel con botones solo existe si hay un canal de suscripción configurado.
+  const subscriptionChannelId = env.DISCORD_SUBSCRIPTION_CHANNEL_ID;
+  const panelGateway = new DiscordKothSubscriptionPanelGateway({ client, messageContext });
+  const panel =
+    subscriptionChannelId === undefined
+      ? null
+      : new KothSubscriptionPanelService({
+          channelId: subscriptionChannelId,
+          panels: new SqliteKothPanelMessageRepository(database),
+          gateway: panelGateway,
+          clock,
+        });
+
+  const commandDependencies: KothCommandDependencies = {
+    timeService,
+    clock,
+    messageContext,
+    announcementChannelId: env.DISCORD_CHANNEL_ID,
+    subscriptions,
+    messenger,
+    panel,
+  };
+
   const scheduler = new KothSchedulerService({
     timeService,
     repository: notificationRepository,
@@ -105,22 +133,15 @@ export function createKothModule(context: KothModuleContext): BotModuleBundle {
   });
 
   return {
-    commands: [
-      createKothCommand({
-        timeService,
-        clock,
-        messageContext,
-        announcementChannelId: env.DISCORD_CHANNEL_ID,
-        subscriptions,
-        messenger,
-      }),
-    ],
+    commands: [createKothCommand(commandDependencies)],
+    buttons: createKothSubscriptionButtons(commandDependencies),
 
     module: {
       name: 'koth',
 
       async start() {
         await announcer.verifyChannel();
+        await verifySubscriptionChannel();
 
         const now = clock.now();
         const cutoff = now.minus({ days: kothConfig.scheduler.historyRetentionDays });
@@ -148,6 +169,19 @@ export function createKothModule(context: KothModuleContext): BotModuleBundle {
       },
     },
   };
+
+  /** El canal de suscripción es opcional: si falla, solo se avisa en el log. */
+  async function verifySubscriptionChannel(): Promise<void> {
+    if (subscriptionChannelId === undefined) return;
+    try {
+      await panelGateway.verifyChannel(subscriptionChannelId);
+    } catch (error: unknown) {
+      logger.warn(
+        { err: error, channelId: subscriptionChannelId },
+        'No se puede usar el canal de suscripción: revisa los permisos del bot en ese canal',
+      );
+    }
+  }
 }
 
 function toMessageContext(env: Env, icons: IconResolver): MessageContext {
@@ -157,5 +191,6 @@ function toMessageContext(env: Env, icons: IconResolver): MessageContext {
     mentionEveryone: kothConfig.mentionEveryone,
     icons,
     voiceChannelId: env.DISCORD_VOICE_CHANNEL_ID ?? null,
+    subscriptionChannelId: env.DISCORD_SUBSCRIPTION_CHANNEL_ID ?? null,
   };
 }

@@ -1,10 +1,8 @@
-import { type ChatInputCommandInteraction, MessageFlags } from 'discord.js';
+import type { ChatInputCommandInteraction } from 'discord.js';
 import type { Logger } from 'pino';
 import type { IconResolver } from '../../shared/icons/icon-registry.js';
 import type { SlashCommand } from '../../shared/types/command.js';
-
-const COMMAND_ERROR_TEXT =
-  'Ha ocurrido un error al ejecutar el comando. Inténtalo de nuevo en unos instantes.';
+import { replyWithError } from '../interactions/reply-with-error.js';
 
 /** Registro y despacho de comandos slash con manejo centralizado de errores. */
 export class CommandRegistry {
@@ -38,23 +36,7 @@ export class CommandRegistry {
         { err: error, command: interaction.commandName, user: interaction.user.id },
         'Error al ejecutar comando',
       );
-      await this.replyWithError(interaction);
-    }
-  }
-
-  private async replyWithError(interaction: ChatInputCommandInteraction): Promise<void> {
-    const payload = {
-      content: `${this.icons.get('circle-x')} ${COMMAND_ERROR_TEXT}`,
-      flags: MessageFlags.Ephemeral,
-    } as const;
-    try {
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(payload);
-      } else {
-        await interaction.reply(payload);
-      }
-    } catch (error: unknown) {
-      this.logger.error({ err: error }, 'No se pudo notificar el error al usuario');
+      await replyWithError(interaction, this.icons, this.logger);
     }
   }
 }
