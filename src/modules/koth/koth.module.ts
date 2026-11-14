@@ -4,24 +4,26 @@ import type { Logger } from 'pino';
 import type { Env } from '../../config/env.js';
 import { kothConfig } from '../../config/koth.config.js';
 import type { IconResolver } from '../../shared/icons/icon-registry.js';
-import type { BotModule } from '../../shared/types/bot-module.js';
+import type { BotModuleBundle } from '../../shared/types/bot-module.js';
 import type { Clock } from '../../shared/types/clock.js';
-import type { SlashCommand } from '../../shared/types/command.js';
 import { PollingTask } from '../../shared/utils/polling-task.js';
+import { sleep } from '../../shared/utils/sleep.js';
 import { createKothCommand } from './commands/koth.command.js';
+import { SqliteKothDmDeliveryRepository } from './repositories/sqlite-koth-dm-delivery.repository.js';
 import { SqliteKothNotificationRepository } from './repositories/sqlite-koth-notification.repository.js';
+import { SqliteKothSubscriberRepository } from './repositories/sqlite-koth-subscriber.repository.js';
+import { KothDmDispatcherService } from './services/koth-dm-dispatcher.service.js';
+import { DiscordKothDirectMessenger } from './services/koth-direct-message.service.js';
 import { DiscordKothAnnouncer } from './services/koth-notification.service.js';
 import { KothSchedulerService } from './services/koth-scheduler.service.js';
+import { KothSubscriptionService } from './services/koth-subscription.service.js';
 import { KothTimeService } from './services/koth-time.service.js';
 import type { MessageContext } from './templates/koth-messages.js';
 
-export interface KothCommandsContext {
+export interface KothModuleContext {
   readonly env: Env;
   readonly clock: Clock;
   readonly icons: IconResolver;
-}
-
-export interface KothModuleContext extends KothCommandsContext {
   readonly client: Client;
   readonly database: DatabaseSync;
   readonly logger: Logger;
@@ -35,36 +37,55 @@ export function createKothTimeService(timezone: string): KothTimeService {
   });
 }
 
-/** Comandos slash del módulo. No requieren conexión a Discord ni base de datos. */
-export function createKothCommands({ env, clock, icons }: KothCommandsContext): SlashCommand[] {
-  return [
-    createKothCommand({
-      timeService: createKothTimeService(env.TIMEZONE),
-      clock,
-      messageContext: toMessageContext(env, icons),
-      announcementChannelId: env.DISCORD_CHANNEL_ID,
-    }),
-  ];
-}
-
-/** Composición del módulo KOTH: scheduler, persistencia y publicación en Discord. */
-export function createKothModule(context: KothModuleContext): BotModule {
-  const { env, clock, logger, icons } = context;
+/**
+ * Composición del módulo KOTH: avisos del canal, MD a suscriptores, persistencia y
+ * comandos. Construir el módulo no abre ninguna conexión: el cliente de Discord solo
+ * se usa cuando se ejecuta un comando o se arranca el módulo.
+ */
+export function createKothModule(context: KothModuleContext): BotModuleBundle {
+  const { env, clock, logger, icons, client, database } = context;
+  const messageContext = toMessageContext(env, icons);
   const timeService = createKothTimeService(env.TIMEZONE);
-  const repository = new SqliteKothNotificationRepository(context.database);
+
+  const notificationRepository = new SqliteKothNotificationRepository(database);
+  const subscriberRepository = new SqliteKothSubscriberRepository(database);
+  const deliveryRepository = new SqliteKothDmDeliveryRepository(database);
+
   const announcer = new DiscordKothAnnouncer({
-    client: context.client,
+    client,
     channelId: env.DISCORD_CHANNEL_ID,
-    messageContext: toMessageContext(env, icons),
+    messageContext,
   });
+  const messenger = new DiscordKothDirectMessenger({
+    client,
+    guildId: env.DISCORD_GUILD_ID,
+    messageContext,
+  });
+  const subscriptions = new KothSubscriptionService({
+    subscribers: subscriberRepository,
+    messenger,
+    clock,
+  });
+
   const scheduler = new KothSchedulerService({
     timeService,
-    repository,
+    repository: notificationRepository,
     announcer,
     logger,
     options: { maxLatenessMs: kothConfig.scheduler.maxLatenessMs },
   });
-  const polling = new PollingTask({
+  const dmDispatcher = new KothDmDispatcherService({
+    timeService,
+    subscribers: subscriberRepository,
+    deliveries: deliveryRepository,
+    messenger,
+    clock,
+    pause: sleep,
+    logger,
+    options: kothConfig.directMessages,
+  });
+
+  const channelPolling = new PollingTask({
     name: 'koth-scheduler',
     intervalMs: kothConfig.scheduler.pollIntervalMs,
     logger,
@@ -72,29 +93,59 @@ export function createKothModule(context: KothModuleContext): BotModule {
       await scheduler.tick(clock.now());
     },
   });
+  // Tarea aparte: repartir los MD con pausas puede durar minutos y no debe retrasar
+  // los avisos del canal.
+  const dmPolling = new PollingTask({
+    name: 'koth-dm-dispatcher',
+    intervalMs: kothConfig.scheduler.pollIntervalMs,
+    logger,
+    task: async (signal) => {
+      await dmDispatcher.run(signal);
+    },
+  });
 
   return {
-    name: 'koth',
+    commands: [
+      createKothCommand({
+        timeService,
+        clock,
+        messageContext,
+        announcementChannelId: env.DISCORD_CHANNEL_ID,
+        subscriptions,
+        messenger,
+      }),
+    ],
 
-    async start() {
-      await announcer.verifyChannel();
+    module: {
+      name: 'koth',
 
-      const now = clock.now();
-      const cutoff = now.minus({ days: kothConfig.scheduler.historyRetentionDays });
-      const pruned = repository.deleteEventsBefore(cutoff);
-      logger.info({ pruned }, 'Historial antiguo de avisos depurado');
+      async start() {
+        await announcer.verifyChannel();
 
-      polling.start();
+        const now = clock.now();
+        const cutoff = now.minus({ days: kothConfig.scheduler.historyRetentionDays });
+        const pruned =
+          notificationRepository.deleteEventsBefore(cutoff) +
+          deliveryRepository.deleteEventsBefore(cutoff);
+        logger.info({ pruned }, 'Historial antiguo de avisos depurado');
 
-      const next = timeService.getNextOccurrence(now);
-      logger.info(
-        { koth: next.slot.name, startsAt: next.startsAt.toISO() },
-        'Scheduler de KOTH en marcha',
-      );
-    },
+        channelPolling.start();
+        dmPolling.start();
 
-    async stop() {
-      await polling.stop();
+        const next = timeService.getNextOccurrence(now);
+        logger.info(
+          {
+            koth: next.slot.name,
+            startsAt: next.startsAt.toISO(),
+            subscribers: subscriptions.list().length,
+          },
+          'Scheduler de KOTH en marcha',
+        );
+      },
+
+      async stop() {
+        await Promise.all([channelPolling.stop(), dmPolling.stop()]);
+      },
     },
   };
 }
@@ -105,5 +156,6 @@ function toMessageContext(env: Env, icons: IconResolver): MessageContext {
     timezone: env.TIMEZONE,
     mentionEveryone: kothConfig.mentionEveryone,
     icons,
+    voiceChannelId: env.DISCORD_VOICE_CHANNEL_ID ?? null,
   };
 }

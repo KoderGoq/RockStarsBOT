@@ -9,8 +9,12 @@ import type {
   TimeRange,
 } from '../domain/koth.types.js';
 
-/** Margen de búsqueda suficiente para encontrar siempre el siguiente KOTH diario. */
-const NEXT_OCCURRENCE_SEARCH_DAYS = 2;
+/**
+ * Margen de búsqueda del siguiente KOTH: una semana completa más un día de colchón,
+ * porque un KOTH puede celebrarse solo algunos días y la siguiente ocurrencia de un
+ * mismo KOTH puede estar a varios días.
+ */
+const NEXT_OCCURRENCE_SEARCH_DAYS = 8;
 
 /**
  * Cálculos de calendario de los KOTH. Es un servicio puro: no conoce Discord,
@@ -19,7 +23,8 @@ const NEXT_OCCURRENCE_SEARCH_DAYS = 2;
  *
  * Las ocurrencias se generan día a día en la zona oficial, por lo que un KOTH a
  * las 02:00 pertenece al día natural siguiente al KOTH de las 22:00, y los
- * cambios de horario se resuelven con la base de datos de zonas IANA.
+ * cambios de horario se resuelven con la base de datos de zonas IANA. Cada KOTH
+ * solo se genera en los días de la semana en que se celebra (`KothSlot.days`).
  */
 export class KothTimeService {
   constructor(private readonly schedule: KothScheduleDefinition) {}
@@ -47,7 +52,7 @@ export class KothTimeService {
     const untilMs = range.until.toMillis();
 
     return this.getCandidateDays(range)
-      .flatMap((day) => this.schedule.slots.map((slot) => this.buildOccurrence(day, slot)))
+      .flatMap((day) => this.getSlotsForDay(day).map((slot) => this.buildOccurrence(day, slot)))
       .filter((occurrence) => {
         const startsAtMs = occurrence.startsAt.toMillis();
         return startsAtMs > afterMs && startsAtMs <= untilMs;
@@ -110,6 +115,13 @@ export class KothTimeService {
       days.push(day);
     }
     return days;
+  }
+
+  /** KOTH que se celebran en ese día natural de la zona oficial. */
+  private getSlotsForDay(day: DateTime): KothSlot[] {
+    return this.schedule.slots.filter((slot) =>
+      slot.days.some((weekday) => weekday === day.weekday),
+    );
   }
 
   private buildOccurrence(day: DateTime, slot: KothSlot): KothOccurrence {

@@ -75,6 +75,46 @@ describe('KothSchedulerService', () => {
     });
   });
 
+  describe('calendario semanal', () => {
+    it('un sábado completo solo produce los 3 avisos del KOTH de las 02:00', async () => {
+      const { scheduler } = createSchedulerHarness();
+
+      // Desde el viernes a las 23:30 (después del último KOTH del viernes) hasta el sábado a las 23:59.
+      const sent = await runTicksBetween(
+        scheduler,
+        madrid('2026-11-13T23:30'),
+        madrid('2026-11-14T23:59'),
+        30,
+      );
+
+      expect(sent.map(({ key }) => key)).toEqual([
+        reminderKey('2026-11-14T02:00', 60),
+        reminderKey('2026-11-14T02:00', 30),
+        reminderKey('2026-11-14T02:00', 10),
+      ]);
+      expect(sent.map(({ sentAt }) => sentAt.toFormat('HH:mm'))).toEqual([
+        '01:00',
+        '01:30',
+        '01:50',
+      ]);
+    });
+
+    it('el domingo vuelve a anunciar los tres KOTH', async () => {
+      const { scheduler } = createSchedulerHarness();
+
+      const sent = await runTicksBetween(
+        scheduler,
+        madrid('2026-11-14T23:30'),
+        madrid('2026-11-15T23:59'),
+        30,
+      );
+
+      const koths = new Set(sent.map(({ key }) => key.split('@')[0]));
+      expect([...koths].sort()).toEqual(['koth-1', 'koth-2', 'koth-3']);
+      expect(sent).toHaveLength(9);
+    });
+  });
+
   describe('cambios de horario', () => {
     it('verano → invierno: el KOTH de las 02:00 se anuncia una sola vez', async () => {
       const { scheduler } = createSchedulerHarness();

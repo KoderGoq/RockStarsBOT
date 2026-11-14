@@ -30,6 +30,17 @@ describe('parseEnv', () => {
     ).toBe('play.ejemplo.net');
   });
 
+  it('el canal de voz es opcional y, si se define, debe ser un ID de Discord válido', () => {
+    expect(parseEnv(validEnv).DISCORD_VOICE_CHANNEL_ID).toBeUndefined();
+    expect(
+      parseEnv({ ...validEnv, DISCORD_VOICE_CHANNEL_ID: '423456789012345678' })
+        .DISCORD_VOICE_CHANNEL_ID,
+    ).toBe('423456789012345678');
+    expect(() => parseEnv({ ...validEnv, DISCORD_VOICE_CHANNEL_ID: 'call' })).toThrow(
+      /DISCORD_VOICE_CHANNEL_ID/,
+    );
+  });
+
   it('trata las variables vacías como ausentes', () => {
     expect(parseEnv({ ...validEnv, TIMEZONE: '', LOG_LEVEL: '  ' }).TIMEZONE).toBe('Europe/Madrid');
   });

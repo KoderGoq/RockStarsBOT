@@ -3,7 +3,11 @@ import type { Logger } from 'pino';
 export interface PollingTaskOptions {
   readonly name: string;
   readonly intervalMs: number;
-  readonly task: () => Promise<void>;
+  /**
+   * La tarea recibe una señal que se cancela cuando se llama a `stop()`. Las tareas
+   * largas deben consultarla para terminar pronto y no retrasar el apagado.
+   */
+  readonly task: (signal: AbortSignal) => Promise<void>;
   readonly logger: Logger;
 }
 
@@ -14,7 +18,7 @@ export interface PollingTaskOptions {
  * - Nunca hay dos ejecuciones simultáneas: si una ejecución tarda más que el
  *   intervalo, los ticks intermedios se descartan.
  * - Un error en una ejecución se registra y no detiene el polling.
- * - `stop()` espera a que finalice la ejecución en curso.
+ * - `stop()` cancela la señal de la tarea y espera a que finalice la ejecución en curso.
  *
  * La tarea debe recalcular su estado a partir del reloj en cada ejecución, de modo
  * que el retraso del temporizador (suspensión del equipo, carga del event loop)
@@ -23,6 +27,7 @@ export interface PollingTaskOptions {
 export class PollingTask {
   private timer: NodeJS.Timeout | undefined;
   private currentRun: Promise<void> | undefined;
+  private abortController = new AbortController();
 
   constructor(private readonly options: PollingTaskOptions) {}
 
@@ -33,6 +38,7 @@ export class PollingTask {
   start(): void {
     if (this.timer !== undefined) return;
 
+    this.abortController = new AbortController();
     this.timer = setInterval(() => void this.runOnce(), this.options.intervalMs);
     void this.runOnce();
     this.options.logger.info(
@@ -46,6 +52,7 @@ export class PollingTask {
 
     clearInterval(this.timer);
     this.timer = undefined;
+    this.abortController.abort();
     await this.currentRun;
     this.options.logger.info({ task: this.options.name }, 'Tarea periódica detenida');
   }
@@ -70,7 +77,7 @@ export class PollingTask {
 
   private async execute(): Promise<void> {
     try {
-      await this.options.task();
+      await this.options.task(this.abortController.signal);
     } catch (error: unknown) {
       this.options.logger.error(
         { err: error, task: this.options.name },

@@ -10,17 +10,13 @@ import {
   buildTestReminderMessage,
   type MessageContext,
 } from '../../src/modules/koth/templates/koth-messages.js';
+import { createMessageContext } from '../helpers/direct-messages.js';
 import { createLoadedIconRegistry } from '../helpers/icons.js';
 import { createTimeService, madrid } from '../helpers/time.js';
 
 const timeService = createTimeService();
 const icons = createLoadedIconRegistry();
-const context: MessageContext = {
-  serverIp: 'boutcraft.xyz',
-  timezone: 'Europe/Madrid',
-  mentionEveryone: true,
-  icons,
-};
+const context: MessageContext = createMessageContext({ mentionEveryone: true, icons });
 const contextWithoutMentions: MessageContext = { ...context, mentionEveryone: false };
 /** Cualquier emoji Unicode (⚔️, 🔥, ✅...). Los emojis personalizados `<:x:1>` no lo cumplen. */
 const UNICODE_EMOJI = /\p{Extended_Pictographic}/u;
@@ -126,6 +122,22 @@ describe('Templates de mensajes KOTH', () => {
       '02:00',
     ]);
     expect(embed.description).toContain('1 h, 30 min y 10 min');
+  });
+
+  it('/koth horarios indica los días de cada KOTH y no afirma que sean todos los días', () => {
+    const embed = buildScheduleEmbed(
+      timeService.getNextOccurrencePerSlot(madrid('2026-11-09T12:00')),
+      timeService.reminderOffsetsMinutes,
+      context,
+    ).toJSON();
+    const kothFields = embed.fields?.filter((field) => field.name.includes('KOTH')) ?? [];
+
+    expect(
+      kothFields.map((field) => field.value.includes('Todos los días excepto sábado')),
+    ).toEqual([true, true, false]);
+    expect(kothFields[2]?.value).toContain('Todos los días');
+    expect(kothFields[2]?.value).not.toContain('excepto');
+    expect(embed.description).not.toContain('todos los días');
   });
 
   describe('iconos de Lucide', () => {

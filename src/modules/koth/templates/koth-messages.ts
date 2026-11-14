@@ -3,22 +3,25 @@ import type { DateTime } from 'luxon';
 import type { IconName } from '../../../shared/icons/icon-catalog.js';
 import type { IconResolver } from '../../../shared/icons/icon-registry.js';
 import { toDiscordTimestamp } from '../../../shared/utils/discord-timestamp.js';
+import { joinWithAnd } from '../../../shared/utils/text.js';
 import {
   formatHourMinute,
   formatMinutes,
   formatRemainingTime,
 } from '../../../shared/utils/time.js';
-import { KOTH_EMBED_COLORS } from '../domain/koth.constants.js';
+import { ALL_WEEKDAYS, KOTH_EMBED_COLORS } from '../domain/koth.constants.js';
 import type {
   KothOccurrence,
   KothReminder,
   KothSlot,
   ReminderOffsetMinutes,
+  Weekday,
 } from '../domain/koth.types.js';
 
 /**
- * Templates de todos los mensajes del módulo KOTH.
- * Para cambiar textos, iconos o colores, este es el único archivo a modificar.
+ * Templates de los avisos del canal y de los comandos informativos del módulo KOTH.
+ * Los mensajes privados y los comandos de suscripción están en `koth-dm-messages.ts`.
+ * Para cambiar textos, iconos o colores, edita estos dos archivos.
  *
  * Los iconos son iconos de Lucide (ver `shared/icons/icon-catalog.ts`) y se
  * obtienen siempre a través de `context.icons`, nunca como emojis literales.
@@ -30,6 +33,8 @@ export interface MessageContext {
   readonly mentionEveryone: boolean;
   readonly timezone: string;
   readonly icons: IconResolver;
+  /** Canal de voz ("el call") al que se invita a conectarse en los MD; `null` si no se ha configurado. */
+  readonly voiceChannelId: string | null;
 }
 
 interface ReminderTemplate {
@@ -178,7 +183,7 @@ export function buildScheduleEmbed(
     .setTitle(`${icons.get('calendar')} Horarios oficiales de KOTH · Boutcraft`)
     .setDescription(
       [
-        'Los KOTH se celebran **todos los días** en estos horarios (hora oficial de España).',
+        'Horarios oficiales de los KOTH (hora de España). Cada KOTH indica los días en que se celebra.',
         `${icons.get('bell')} Avisos automáticos ${formatReminderOffsets(reminderOffsetsMinutes)} antes de cada evento.`,
       ].join('\n'),
     )
@@ -187,6 +192,7 @@ export function buildScheduleEmbed(
         name: `${icons.get('swords')} ${occurrence.slot.name}`,
         value: [
           `${icons.get('clock')} **${formatSlotTime(occurrence.slot)}** (España)`,
+          `${icons.get('calendar')} ${describeDays(occurrence.slot.days)}`,
           `${icons.get('earth')} Tu hora: ${toDiscordTimestamp(occurrence.startsAt, 't')}`,
           `${icons.get('hourglass')} Próximo: ${toDiscordTimestamp(occurrence.startsAt, 'R')}`,
         ].join('\n'),
@@ -239,8 +245,27 @@ function formatSlotTime(slot: KothSlot): string {
 
 /** [60, 30, 10] → "1 h, 30 min y 10 min" */
 function formatReminderOffsets(offsets: readonly ReminderOffsetMinutes[]): string {
-  const labels = [...offsets].sort((a, b) => b - a).map(formatMinutes);
-  const last = labels.pop();
-  if (last === undefined) return '';
-  return labels.length === 0 ? last : `${labels.join(', ')} y ${last}`;
+  return joinWithAnd([...offsets].sort((a, b) => b - a).map(formatMinutes));
+}
+
+const WEEKDAY_NAMES: Record<Weekday, string> = {
+  1: 'lunes',
+  2: 'martes',
+  3: 'miércoles',
+  4: 'jueves',
+  5: 'viernes',
+  6: 'sábado',
+  7: 'domingo',
+};
+
+/** Todos → "Todos los días" · casi todos → "Todos los días excepto sábado" · pocos → "lunes y jueves". */
+function describeDays(days: readonly Weekday[]): string {
+  const missing = ALL_WEEKDAYS.filter((day) => !days.includes(day));
+  if (missing.length === 0) return 'Todos los días';
+  if (missing.length <= 3) {
+    return `Todos los días excepto ${joinWithAnd(missing.map((day) => WEEKDAY_NAMES[day]))}`;
+  }
+  return joinWithAnd(
+    ALL_WEEKDAYS.filter((day) => days.includes(day)).map((day) => WEEKDAY_NAMES[day]),
+  );
 }

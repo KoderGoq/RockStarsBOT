@@ -5,7 +5,7 @@
  * - Nunca hay dos ejecuciones simultáneas: si una ejecución tarda más que el
  *   intervalo, los ticks intermedios se descartan.
  * - Un error en una ejecución se registra y no detiene el polling.
- * - `stop()` espera a que finalice la ejecución en curso.
+ * - `stop()` cancela la señal de la tarea y espera a que finalice la ejecución en curso.
  *
  * La tarea debe recalcular su estado a partir del reloj en cada ejecución, de modo
  * que el retraso del temporizador (suspensión del equipo, carga del event loop)
@@ -15,6 +15,7 @@ export class PollingTask {
     options;
     timer;
     currentRun;
+    abortController = new AbortController();
     constructor(options) {
         this.options = options;
     }
@@ -24,6 +25,7 @@ export class PollingTask {
     start() {
         if (this.timer !== undefined)
             return;
+        this.abortController = new AbortController();
         this.timer = setInterval(() => void this.runOnce(), this.options.intervalMs);
         void this.runOnce();
         this.options.logger.info({ task: this.options.name, intervalMs: this.options.intervalMs }, 'Tarea periódica iniciada');
@@ -33,6 +35,7 @@ export class PollingTask {
             return;
         clearInterval(this.timer);
         this.timer = undefined;
+        this.abortController.abort();
         await this.currentRun;
         this.options.logger.info({ task: this.options.name }, 'Tarea periódica detenida');
     }
@@ -52,7 +55,7 @@ export class PollingTask {
     }
     async execute() {
         try {
-            await this.options.task();
+            await this.options.task(this.abortController.signal);
         }
         catch (error) {
             this.options.logger.error({ err: error, task: this.options.name }, 'Error en tarea periódica');

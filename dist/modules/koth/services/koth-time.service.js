@@ -1,7 +1,11 @@
 import { resolveWallClockTime } from '../../../shared/utils/time.js';
 import { buildOccurrenceId, buildReminderKey } from '../domain/koth.identifiers.js';
-/** Margen de búsqueda suficiente para encontrar siempre el siguiente KOTH diario. */
-const NEXT_OCCURRENCE_SEARCH_DAYS = 2;
+/**
+ * Margen de búsqueda del siguiente KOTH: una semana completa más un día de colchón,
+ * porque un KOTH puede celebrarse solo algunos días y la siguiente ocurrencia de un
+ * mismo KOTH puede estar a varios días.
+ */
+const NEXT_OCCURRENCE_SEARCH_DAYS = 8;
 /**
  * Cálculos de calendario de los KOTH. Es un servicio puro: no conoce Discord,
  * la base de datos ni el reloj del sistema; todas las fechas se reciben como
@@ -9,7 +13,8 @@ const NEXT_OCCURRENCE_SEARCH_DAYS = 2;
  *
  * Las ocurrencias se generan día a día en la zona oficial, por lo que un KOTH a
  * las 02:00 pertenece al día natural siguiente al KOTH de las 22:00, y los
- * cambios de horario se resuelven con la base de datos de zonas IANA.
+ * cambios de horario se resuelven con la base de datos de zonas IANA. Cada KOTH
+ * solo se genera en los días de la semana en que se celebra (`KothSlot.days`).
  */
 export class KothTimeService {
     schedule;
@@ -34,7 +39,7 @@ export class KothTimeService {
         const afterMs = range.after.toMillis();
         const untilMs = range.until.toMillis();
         return this.getCandidateDays(range)
-            .flatMap((day) => this.schedule.slots.map((slot) => this.buildOccurrence(day, slot)))
+            .flatMap((day) => this.getSlotsForDay(day).map((slot) => this.buildOccurrence(day, slot)))
             .filter((occurrence) => {
             const startsAtMs = occurrence.startsAt.toMillis();
             return startsAtMs > afterMs && startsAtMs <= untilMs;
@@ -90,6 +95,10 @@ export class KothTimeService {
             days.push(day);
         }
         return days;
+    }
+    /** KOTH que se celebran en ese día natural de la zona oficial. */
+    getSlotsForDay(day) {
+        return this.schedule.slots.filter((slot) => slot.days.some((weekday) => weekday === day.weekday));
     }
     buildOccurrence(day, slot) {
         const startsAt = resolveWallClockTime({ year: day.year, month: day.month, day: day.day, hour: slot.hour, minute: slot.minute }, this.schedule.timezone);

@@ -1,3 +1,5 @@
+import type { SlashCommand } from './command.js';
+
 /**
  * Módulo funcional del bot (KOTH, futuros eventos, anuncios...).
  * Cada módulo gestiona su propio ciclo de vida y se arranca cuando el cliente
@@ -7,4 +9,10 @@ export interface BotModule {
   readonly name: string;
   start(): Promise<void>;
   stop(): Promise<void>;
+}
+
+/** Un módulo junto con los comandos slash que aporta. */
+export interface BotModuleBundle {
+  readonly module: BotModule;
+  readonly commands: readonly SlashCommand[];
 }

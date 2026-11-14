@@ -75,6 +75,53 @@ describe('PollingTask', () => {
     expect(task).toHaveBeenCalledTimes(3);
   });
 
+  it('stop() cancela la señal de la tarea para que una ejecución larga termine pronto', async () => {
+    let signalSeen: AbortSignal | undefined;
+    const task = vi.fn(async (signal: AbortSignal) => {
+      signalSeen = signal;
+      await new Promise<void>((resolve) => {
+        signal.addEventListener('abort', () => {
+          resolve();
+        });
+      });
+    });
+    const polling = new PollingTask({
+      name: 'test',
+      intervalMs: INTERVAL_MS,
+      task,
+      logger: silentLogger,
+    });
+
+    polling.start();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(signalSeen?.aborted).toBe(false);
+
+    await polling.stop();
+
+    expect(signalSeen?.aborted).toBe(true);
+  });
+
+  it('tras un stop() la tarea se puede volver a iniciar con una señal nueva', async () => {
+    const signals: AbortSignal[] = [];
+    const polling = new PollingTask({
+      name: 'test',
+      intervalMs: INTERVAL_MS,
+      task: (signal) => {
+        signals.push(signal);
+        return Promise.resolve();
+      },
+      logger: silentLogger,
+    });
+
+    polling.start();
+    await polling.stop();
+    polling.start();
+    await polling.stop();
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0]).not.toBe(signals[1]);
+  });
+
   it('start() es idempotente y stop() detiene las ejecuciones', async () => {
     const task = vi.fn(() => Promise.resolve());
     const polling = new PollingTask({

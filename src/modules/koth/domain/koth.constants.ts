@@ -1,5 +1,8 @@
 export const KOTH_COMMAND_NAME = 'koth';
 
+/** Los siete días de la semana, de lunes (1) a domingo (7). */
+export const ALL_WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
+
 /** Estado de un aviso registrado en la persistencia. */
 export const NotificationStatus = {
   /** Reservado por un proceso; el envío está en curso (o el proceso cayó a mitad). */
@@ -17,6 +20,24 @@ export const SkipReason = {
   TooLate: 'too-late',
 } as const;
 export type SkipReason = (typeof SkipReason)[keyof typeof SkipReason];
+
+/** Estado del MD de un aviso para un suscriptor concreto. */
+export const DeliveryStatus = {
+  /** Reservado; el envío está en curso (o el proceso cayó a mitad). */
+  Processing: 'processing',
+  Sent: 'sent',
+  /** Tiene los MD cerrados o bloqueó al bot. */
+  Unreachable: 'unreachable',
+  /** Ya no está en el servidor. */
+  Left: 'left',
+  /** Error inesperado; no se reintenta. */
+  Failed: 'failed',
+} as const;
+export type DeliveryStatus = (typeof DeliveryStatus)[keyof typeof DeliveryStatus];
+
+/** Estados finales sin entrega, los únicos que se pueden registrar tras un fallo. */
+export type UndeliveredStatus =
+  typeof DeliveryStatus.Unreachable | typeof DeliveryStatus.Left | typeof DeliveryStatus.Failed;
 
 export const KOTH_EMBED_COLORS = {
   info: 0x5865f2,

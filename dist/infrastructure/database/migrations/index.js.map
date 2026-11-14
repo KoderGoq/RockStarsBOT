@@ -1,1 +1,1 @@
-{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../../src/infrastructure/database/migrations/index.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,gCAAgC,EAAE,MAAM,oCAAoC,CAAC;AAGtF,oEAAoE;AACpE,MAAM,CAAC,MAAM,UAAU,GAAyB,CAAC,gCAAgC,CAAC,CAAC"}
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../../src/infrastructure/database/migrations/index.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,gCAAgC,EAAE,MAAM,oCAAoC,CAAC;AACtF,OAAO,EAAE,iCAAiC,EAAE,MAAM,sCAAsC,CAAC;AAGzF,oEAAoE;AACpE,MAAM,CAAC,MAAM,UAAU,GAAyB;IAC9C,gCAAgC;IAChC,iCAAiC;CAClC,CAAC"}

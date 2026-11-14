@@ -1,7 +1,8 @@
 import { EmbedBuilder } from 'discord.js';
 import { toDiscordTimestamp } from '../../../shared/utils/discord-timestamp.js';
+import { joinWithAnd } from '../../../shared/utils/text.js';
 import { formatHourMinute, formatMinutes, formatRemainingTime, } from '../../../shared/utils/time.js';
-import { KOTH_EMBED_COLORS } from '../domain/koth.constants.js';
+import { ALL_WEEKDAYS, KOTH_EMBED_COLORS } from '../domain/koth.constants.js';
 /**
  * Un template por cada antelación. El tipo `Record` obliga a crear el template
  * de cualquier nueva antelación que se añada a `ReminderOffsetMinutes`.
@@ -103,13 +104,14 @@ export function buildScheduleEmbed(nextOccurrencePerSlot, reminderOffsetsMinutes
         .setColor(KOTH_EMBED_COLORS.info)
         .setTitle(`${icons.get('calendar')} Horarios oficiales de KOTH · Boutcraft`)
         .setDescription([
-        'Los KOTH se celebran **todos los días** en estos horarios (hora oficial de España).',
+        'Horarios oficiales de los KOTH (hora de España). Cada KOTH indica los días en que se celebra.',
         `${icons.get('bell')} Avisos automáticos ${formatReminderOffsets(reminderOffsetsMinutes)} antes de cada evento.`,
     ].join('\n'))
         .addFields(...nextOccurrencePerSlot.map((occurrence) => ({
         name: `${icons.get('swords')} ${occurrence.slot.name}`,
         value: [
             `${icons.get('clock')} **${formatSlotTime(occurrence.slot)}** (España)`,
+            `${icons.get('calendar')} ${describeDays(occurrence.slot.days)}`,
             `${icons.get('earth')} Tu hora: ${toDiscordTimestamp(occurrence.startsAt, 't')}`,
             `${icons.get('hourglass')} Próximo: ${toDiscordTimestamp(occurrence.startsAt, 'R')}`,
         ].join('\n'),
@@ -139,10 +141,25 @@ function formatSlotTime(slot) {
 }
 /** [60, 30, 10] → "1 h, 30 min y 10 min" */
 function formatReminderOffsets(offsets) {
-    const labels = [...offsets].sort((a, b) => b - a).map(formatMinutes);
-    const last = labels.pop();
-    if (last === undefined)
-        return '';
-    return labels.length === 0 ? last : `${labels.join(', ')} y ${last}`;
+    return joinWithAnd([...offsets].sort((a, b) => b - a).map(formatMinutes));
+}
+const WEEKDAY_NAMES = {
+    1: 'lunes',
+    2: 'martes',
+    3: 'miércoles',
+    4: 'jueves',
+    5: 'viernes',
+    6: 'sábado',
+    7: 'domingo',
+};
+/** Todos → "Todos los días" · casi todos → "Todos los días excepto sábado" · pocos → "lunes y jueves". */
+function describeDays(days) {
+    const missing = ALL_WEEKDAYS.filter((day) => !days.includes(day));
+    if (missing.length === 0)
+        return 'Todos los días';
+    if (missing.length <= 3) {
+        return `Todos los días excepto ${joinWithAnd(missing.map((day) => WEEKDAY_NAMES[day]))}`;
+    }
+    return joinWithAnd(ALL_WEEKDAYS.filter((day) => days.includes(day)).map((day) => WEEKDAY_NAMES[day]));
 }
 //# sourceMappingURL=koth-messages.js.map

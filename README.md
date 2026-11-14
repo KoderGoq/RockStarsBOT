@@ -2,11 +2,21 @@
 
 Bot de Discord para el servidor de Minecraft **Boutcraft** (`boutcraft.xyz`). Anuncia automáticamente los eventos **KOTH (King of the Hill)** y ofrece comandos slash para consultar los horarios.
 
-- Tres KOTH diarios: **17:00**, **22:00** y **02:00** (hora oficial de España, `Europe/Madrid`).
+- Tres KOTH al día: **17:00**, **22:00** y **02:00** (hora oficial de España, `Europe/Madrid`), **excepto los sábados, que solo hay el de las 02:00**. El de las 02:00 cuenta en el día natural en que ocurre.
+
+| Día             | KOTH                 |
+| --------------- | -------------------- |
+| Lunes a viernes | 02:00, 17:00 y 22:00 |
+| **Sábado**      | **solo 02:00**       |
+| Domingo         | 02:00, 17:00 y 22:00 |
+
+Los días de cada KOTH se definen en [`src/config/koth.config.ts`](src/config/koth.config.ts) (`days`, de 1 = lunes a 7 = domingo).
+
 - Avisos automáticos **60, 30 y 10 minutos** antes de cada KOTH.
 - Cambios de horario de verano e invierno gestionados de forma automática.
 - Sin duplicados, también después de reiniciar el bot (persistencia en SQLite).
 - Comandos `/koth siguiente` y `/koth horarios`.
+- **MD opcionales:** quien se suscribe con `/koth suscribirme` recibe un mensaje privado 10 minutos antes de cada KOTH. Solo se escribe a quien lo ha pedido.
 
 ---
 
@@ -69,16 +79,17 @@ Después rellena `.env` con tus valores.
 
 Se validan con **Zod** al arrancar. Si falta alguna o es inválida, el bot no arranca y muestra exactamente qué corregir.
 
-| Variable              | Obligatoria | Por defecto               | Descripción                                                                               |
-| --------------------- | :---------: | ------------------------- | ----------------------------------------------------------------------------------------- |
-| `DISCORD_TOKEN`       |     ✅      | —                         | Token del bot.                                                                            |
-| `DISCORD_CLIENT_ID`   |     ✅      | —                         | Application ID.                                                                           |
-| `DISCORD_GUILD_ID`    |     ✅      | —                         | Servidor donde se registran los comandos.                                                 |
-| `DISCORD_CHANNEL_ID`  |     ✅      | —                         | Canal donde se publican los avisos.                                                       |
-| `TIMEZONE`            |             | `Europe/Madrid`           | Zona horaria **IANA** oficial (no uses `UTC+1`).                                          |
-| `MINECRAFT_SERVER_IP` |             | `boutcraft.xyz`           | IP que aparece en los mensajes (no usa el nombre `SERVER_IP`, que muchos hosts reservan). |
-| `DATABASE_PATH`       |             | `./data/boutcraft.sqlite` | Ruta del fichero SQLite (la carpeta se crea sola).                                        |
-| `LOG_LEVEL`           |             | `info`                    | `fatal`, `error`, `warn`, `info`, `debug`, `trace` o `silent`.                            |
+| Variable                   | Obligatoria | Por defecto               | Descripción                                                                                            |
+| -------------------------- | :---------: | ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `DISCORD_TOKEN`            |     ✅      | —                         | Token del bot.                                                                                         |
+| `DISCORD_CLIENT_ID`        |     ✅      | —                         | Application ID.                                                                                        |
+| `DISCORD_GUILD_ID`         |     ✅      | —                         | Servidor donde se registran los comandos.                                                              |
+| `DISCORD_CHANNEL_ID`       |     ✅      | —                         | Canal donde se publican los avisos.                                                                    |
+| `DISCORD_VOICE_CHANNEL_ID` |             | —                         | Canal de voz ("el call") que se enlaza en los MD. Si falta, el MD dice "el canal de voz del servidor". |
+| `TIMEZONE`                 |             | `Europe/Madrid`           | Zona horaria **IANA** oficial (no uses `UTC+1`).                                                       |
+| `MINECRAFT_SERVER_IP`      |             | `boutcraft.xyz`           | IP que aparece en los mensajes (no usa el nombre `SERVER_IP`, que muchos hosts reservan).              |
+| `DATABASE_PATH`            |             | `./data/boutcraft.sqlite` | Ruta del fichero SQLite (la carpeta se crea sola).                                                     |
+| `LOG_LEVEL`                |             | `info`                    | `fatal`, `error`, `warn`, `info`, `debug`, `trace` o `silent`.                                         |
 
 > Los horarios, los avisos y los parámetros del scheduler **no** están en `.env`: están centralizados en [`src/config/koth.config.ts`](src/config/koth.config.ts).
 >
@@ -95,10 +106,32 @@ pnpm commands:deploy:prod      # desde dist/ (tras pnpm build)
 
 Solo hay que repetirlo cuando cambian los comandos (nombres, descripciones u opciones), no en cada arranque.
 
-| Comando           | Descripción                                                                       |
-| ----------------- | --------------------------------------------------------------------------------- |
-| `/koth siguiente` | Próximo KOTH: hora de inicio, fecha, tiempo restante y timestamp dinámico.        |
-| `/koth horarios`  | Los tres horarios oficiales, con la hora local de cada usuario y la cuenta atrás. |
+| Comando                          | Descripción                                                                                                          |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `/koth siguiente`                | Próximo KOTH: hora de inicio, fecha, tiempo restante y timestamp dinámico.                                           |
+| `/koth horarios`                 | Los tres horarios oficiales, con la hora local de cada usuario y la cuenta atrás.                                    |
+| `/koth suscribirme`              | Te suscribes para recibir un MD del bot 10 minutos antes de cada KOTH.                                               |
+| `/koth cancelar`                 | Dejas de recibir esos MD.                                                                                            |
+| `/koth suscriptores`             | _(Gestionar servidor)_ Lista de miembros suscritos.                                                                  |
+| `/koth quitar usuario:@miembro`  | _(Gestionar servidor)_ Da de baja a un suscriptor.                                                                   |
+| `/koth prueba [aviso] [destino]` | _(Gestionar servidor)_ Muestra cómo se ven los mensajes: en el canal de avisos o, con `destino:md`, en tu propio MD. |
+
+## MD a los suscriptores
+
+Los miembros eligen recibirlos: nadie recibe un MD sin haberse suscrito antes. Esto cumple las normas de Discord sobre mensajes no solicitados y evita que el bot sea marcado como spam.
+
+**Qué reciben.** 10 minutos antes de cada KOTH (`directMessages.offsetMinutes` en [`koth.config.ts`](src/config/koth.config.ts)): el KOTH que va a empezar, una invitación a conectarse al call (enlazando `DISCORD_VOICE_CHANNEL_ID` si está configurado), la cuenta atrás con el timestamp de Discord, la hora, la IP y cómo darse de baja. La cuenta atrás es el timestamp relativo de Discord ("en 10 minutos"), que se actualiza solo.
+
+**Cómo se suscriben.** Con `/koth suscribirme`. El bot envía un MD de confirmación, lo que además comprueba que tienen los MD abiertos. Si no pudo escribirles, no los suscribe y les explica cómo activarlos.
+
+**Cuándo se da de baja a alguien automáticamente.**
+
+- **Se va del servidor:** antes de cada envío se comprueba que sigue siendo miembro. Si no, se le da de baja y no se le escribe. Esa comprobación usa la consulta de un solo miembro, así que **no hace falta activar el intent privilegiado de miembros**.
+- **Cierra los MD o bloquea al bot:** tras 3 fallos seguidos (`maxConsecutiveFailures`) se le da de baja. Un envío correcto reinicia la cuenta.
+
+**Cómo se envían.** Un MD cada 1,5 s (`pauseBetweenSendsMs`) para respetar los límites anti-spam de Discord. Si Discord pide frenar, el lote se detiene y se retoma en el siguiente ciclo sin repetir a nadie. Nunca se envía una vez iniciado el KOTH ni con más de 8 minutos de retraso (`maxLatenessMs`). Cada envío queda registrado por (aviso, usuario) en SQLite, así que nadie recibe el mismo MD dos veces, tampoco tras un reinicio.
+
+**Privacidad.** Solo se guarda el ID de usuario y la fecha de alta. `/koth cancelar` borra el registro.
 
 ## Iconos (Lucide)
 
@@ -247,6 +280,8 @@ El timestamp representa el **inicio exacto del KOTH**, no el momento del envío.
 - Modo **WAL** y `busy_timeout` para escrituras más robustas.
 - **Migraciones versionadas** en [`src/infrastructure/database/migrations/`](src/infrastructure/database/migrations/). Se aplican automáticamente al arrancar, cada una en su transacción, y se registran en `schema_migrations`.
 - Tabla `koth_notifications`: un registro por aviso, con estado `processing`, `sent` o `skipped`, motivo de omisión e ID del mensaje de Discord.
+- Tabla `koth_dm_subscribers`: los miembros suscritos a los MD (ID de usuario, fecha de alta y fallos seguidos).
+- Tabla `koth_dm_deliveries`: un registro por (aviso, usuario) con el estado del MD (`sent`, `unreachable`, `left`, `failed`).
 - El historial de más de **30 días** se depura al arrancar.
 
 **Garantía de entrega:** el sistema prioriza **no duplicar**. Si el proceso muere justo entre el envío a Discord y la confirmación en la base de datos, el aviso queda en `processing` y no se reenvía. Es preferible perder ese aviso concreto a publicarlo dos veces.
@@ -276,7 +311,7 @@ src/
 │       │   └── koth-notification.service.ts  # Adaptador que publica en Discord
 │       ├── repositories/           # Interfaz + implementación SQLite
 │       ├── templates/              # Todos los textos y embeds del módulo
-│       ├── commands/               # /koth siguiente, /koth horarios
+│       ├── commands/               # /koth siguiente, horarios, suscribirme, cancelar, suscriptores, quitar, prueba
 │       └── koth.module.ts          # Composición del módulo
 ├── shared/                         # Reloj, polling, utilidades de tiempo y contratos comunes
 ├── scripts/deploy-commands.ts      # Registro de comandos slash

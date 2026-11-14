@@ -3,12 +3,20 @@ import type { DateTime } from 'luxon';
 /** Minutos de antelación admitidos para los avisos. Cada valor tiene su propio template. */
 export type ReminderOffsetMinutes = 60 | 30 | 10;
 
+/** Día de la semana según ISO 8601: 1 = lunes … 7 = domingo (el mismo criterio que Luxon). */
+export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
 /** Definición recurrente de un KOTH, expresada en la hora local de la zona oficial. */
 export interface KothSlot {
   readonly id: string;
   readonly name: string;
   readonly hour: number;
   readonly minute: number;
+  /**
+   * Días en que se celebra, según el día natural de su inicio en la zona oficial.
+   * Así, un KOTH de las 02:00 del sábado cuenta como sábado.
+   */
+  readonly days: readonly Weekday[];
 }
 
 /** Calendario completo de KOTH: zona horaria, horarios diarios y avisos. */

@@ -10,6 +10,8 @@ const envSchema = z.object({
     DISCORD_CLIENT_ID: discordSnowflake('DISCORD_CLIENT_ID'),
     DISCORD_GUILD_ID: discordSnowflake('DISCORD_GUILD_ID'),
     DISCORD_CHANNEL_ID: discordSnowflake('DISCORD_CHANNEL_ID'),
+    /** Canal de voz ("el call") al que se invita a conectarse en los MD. Opcional. */
+    DISCORD_VOICE_CHANNEL_ID: discordSnowflake('DISCORD_VOICE_CHANNEL_ID').optional(),
     TIMEZONE: z
         .string()
         .refine((zone) => IANAZone.isValidZone(zone), {

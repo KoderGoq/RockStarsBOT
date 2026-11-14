@@ -19,6 +19,8 @@ export const ICON_CATALOG = {
     globe: { color: '#3BA55D', fallback: '🌐' },
     earth: { color: '#3BA55D', fallback: '🌍' },
     bell: { color: '#F0B232', fallback: '🔔' },
+    headset: { color: '#5865F2', fallback: '🎧' },
+    users: { color: '#5865F2', fallback: '👥' },
     'flask-conical': { color: '#9B59B6', fallback: '🧪' },
     'circle-check': { color: '#3BA55D', fallback: '✅' },
     'circle-x': { color: '#ED4245', fallback: '❌' },
