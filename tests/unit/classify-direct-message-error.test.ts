@@ -6,6 +6,7 @@ import { discordError } from '../helpers/discord-errors.js';
 describe('classifyDirectMessageError', () => {
   it.each([
     [RESTJSONErrorCodes.CannotSendMessagesToThisUser, 'dms-closed'],
+    [RESTJSONErrorCodes.CannotSendMessagesToThisUserDueToHavingNoMutualGuilds, 'dms-closed'],
     [RESTJSONErrorCodes.OpeningDirectMessagesTooFast, 'rate-limited'],
     [RESTJSONErrorCodes.UnknownMember, 'not-member'],
     [RESTJSONErrorCodes.UnknownUser, 'not-member'],

@@ -182,8 +182,9 @@ export function buildAlreadySubscribedReply(icons: IconResolver): string {
 export function buildDmsClosedReply(icons: IconResolver): string {
   return (
     `${icons.get('circle-x')} No he podido escribirte por MD, así que no te he suscrito.\n` +
-    'Activa **Mensajes directos** en la configuración de privacidad de este servidor ' +
-    '(clic derecho en el servidor → Ajustes de privacidad) y vuelve a intentarlo.'
+    'Haz clic derecho en el icono de este servidor → **Ajustes de privacidad** y activa ' +
+    '**Mensajes directos** (permitir mensajes directos de miembros del servidor). ' +
+    'Comprueba también que no hayas bloqueado al bot. Después vuelve a intentarlo.'
   );
 }
 

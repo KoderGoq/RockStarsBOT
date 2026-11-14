@@ -12,7 +12,11 @@ import type { UndeliveredOutcome } from '../domain/koth.ports.js';
 export function classifyDirectMessageError(error: unknown): UndeliveredOutcome {
   if (error instanceof DiscordAPIError) {
     switch (error.code) {
+      // 50007 (MD cerrados o bot bloqueado) y 50278 ("sin servidores en común"): Discord devuelve
+      // este último cuando la privacidad del usuario no permite MD desde el servidor, aunque ambos
+      // estén en él. Para el bot es lo mismo: no se puede escribir a esa persona.
       case RESTJSONErrorCodes.CannotSendMessagesToThisUser:
+      case RESTJSONErrorCodes.CannotSendMessagesToThisUserDueToHavingNoMutualGuilds:
         return { kind: 'dms-closed' };
       case RESTJSONErrorCodes.OpeningDirectMessagesTooFast:
         return { kind: 'rate-limited' };
