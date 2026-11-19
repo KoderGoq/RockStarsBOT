@@ -29,6 +29,8 @@ export interface KothDmDispatcherDependencies {
   readonly pause: (ms: number, signal?: AbortSignal) => Promise<void>;
   readonly logger: Logger;
   readonly options: KothDmDispatcherOptions;
+  /** Si devuelve `true`, no se envía ningún MD (avisos apagados). Por defecto, siempre encendido. */
+  readonly isPaused?: () => boolean;
 }
 
 export interface DmDispatchSummary {
@@ -67,6 +69,8 @@ export class KothDmDispatcherService {
       rateLimited: false,
     };
 
+    if (this.deps.isPaused?.() === true) return summary;
+
     for (const reminder of this.findDueReminders(this.deps.clock.now())) {
       const completed = await this.dispatchReminder(reminder, summary, signal);
       if (!completed) break;
@@ -98,6 +102,9 @@ export class KothDmDispatcherService {
 
     for (const userId of deliveries.listPendingUserIds(reminder.key)) {
       if (signal?.aborted === true) return false;
+      // Se consulta en cada envío: si alguien apaga los avisos a mitad de un reparto, se
+      // detiene al instante, sin esperar a que termine toda la lista.
+      if (this.deps.isPaused?.() === true) return false;
 
       const now = clock.now();
       if (!this.canStillSend(reminder, now)) return true;

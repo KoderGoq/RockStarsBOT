@@ -57,7 +57,13 @@ export interface SchedulerHarness {
 }
 
 export function createSchedulerHarness(
-  options: { databasePath?: string; announcer?: FakeAnnouncer; maxLatenessMs?: number } = {},
+  options: {
+    databasePath?: string;
+    announcer?: FakeAnnouncer;
+    maxLatenessMs?: number;
+    /** Simula el interruptor de apagado/encendido de los avisos. */
+    isPaused?: () => boolean;
+  } = {},
 ): SchedulerHarness {
   const database = openDatabase(options.databasePath ?? IN_MEMORY_DATABASE);
   const repository = new SqliteKothNotificationRepository(database);
@@ -68,6 +74,7 @@ export function createSchedulerHarness(
     announcer,
     logger: silentLogger,
     options: { maxLatenessMs: options.maxLatenessMs ?? DEFAULT_MAX_LATENESS_MS },
+    ...(options.isPaused === undefined ? {} : { isPaused: options.isPaused }),
   });
   return { database, repository, announcer, scheduler };
 }

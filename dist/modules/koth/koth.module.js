@@ -6,11 +6,13 @@ import { createKothCommand } from './commands/koth.command.js';
 import { SqliteKothDmDeliveryRepository } from './repositories/sqlite-koth-dm-delivery.repository.js';
 import { SqliteKothNotificationRepository } from './repositories/sqlite-koth-notification.repository.js';
 import { SqliteKothPanelMessageRepository } from './repositories/sqlite-koth-panel-message.repository.js';
+import { SqliteKothPauseStateRepository } from './repositories/sqlite-koth-pause-state.repository.js';
 import { SqliteKothSubscriberRepository } from './repositories/sqlite-koth-subscriber.repository.js';
 import { KothDmDispatcherService } from './services/koth-dm-dispatcher.service.js';
 import { DiscordKothDirectMessenger } from './services/koth-direct-message.service.js';
 import { DiscordKothAnnouncer } from './services/koth-notification.service.js';
 import { DiscordKothSubscriptionPanelGateway } from './services/koth-panel-message.service.js';
+import { KothPauseService } from './services/koth-pause.service.js';
 import { KothSchedulerService } from './services/koth-scheduler.service.js';
 import { KothSubscriptionPanelService } from './services/koth-subscription-panel.service.js';
 import { KothSubscriptionService } from './services/koth-subscription.service.js';
@@ -61,6 +63,11 @@ export function createKothModule(context) {
             gateway: panelGateway,
             clock,
         });
+    const pause = new KothPauseService({
+        repository: new SqliteKothPauseStateRepository(database),
+        clock,
+        logger,
+    });
     const commandDependencies = {
         timeService,
         clock,
@@ -69,6 +76,7 @@ export function createKothModule(context) {
         subscriptions,
         messenger,
         panel,
+        pause,
     };
     const scheduler = new KothSchedulerService({
         timeService,
@@ -76,6 +84,7 @@ export function createKothModule(context) {
         announcer,
         logger,
         options: { maxLatenessMs: kothConfig.scheduler.maxLatenessMs },
+        isPaused: () => pause.isPaused(),
     });
     const dmDispatcher = new KothDmDispatcherService({
         timeService,
@@ -86,6 +95,7 @@ export function createKothModule(context) {
         pause: sleep,
         logger,
         options: kothConfig.directMessages,
+        isPaused: () => pause.isPaused(),
     });
     const channelPolling = new PollingTask({
         name: 'koth-scheduler',
@@ -118,6 +128,10 @@ export function createKothModule(context) {
                 const pruned = notificationRepository.deleteEventsBefore(cutoff) +
                     deliveryRepository.deleteEventsBefore(cutoff);
                 logger.info({ pruned }, 'Historial antiguo de avisos depurado');
+                // Un bot apagado no avisa de nada: que no pase desapercibido tras un reinicio.
+                if (pause.isPaused()) {
+                    logger.warn('Los avisos están APAGADOS: usa /koth encender para reactivarlos');
+                }
                 channelPolling.start();
                 dmPolling.start();
                 const next = timeService.getNextOccurrence(now);

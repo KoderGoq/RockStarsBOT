@@ -114,6 +114,8 @@ Solo hay que repetirlo cuando cambian los comandos (nombres, descripciones u opc
 | `/koth suscribirme`              | Te suscribes para recibir un MD del bot 10 minutos antes de cada KOTH. _(Solo en el canal de suscripción.)_          |
 | `/koth cancelar`                 | Dejas de recibir esos MD. _(Solo en el canal de suscripción.)_                                                       |
 | `/koth panel`                    | _(Gestionar servidor)_ Publica (o actualiza) en el canal de suscripción el mensaje con los botones.                  |
+| `/koth apagar`                   | _(Gestionar servidor)_ Apaga los avisos (canal y MD). El bot sigue conectado y los comandos funcionan.               |
+| `/koth encender`                 | _(Gestionar servidor)_ Vuelve a encender los avisos.                                                                 |
 | `/koth suscriptores`             | _(Gestionar servidor)_ Lista de miembros suscritos.                                                                  |
 | `/koth quitar usuario:@miembro`  | _(Gestionar servidor)_ Da de baja a un suscriptor.                                                                   |
 | `/koth prueba [aviso] [destino]` | _(Gestionar servidor)_ Muestra cómo se ven los mensajes: en el canal de avisos o, con `destino:md`, en tu propio MD. |
@@ -138,6 +140,16 @@ Los miembros eligen recibirlos: nadie recibe un MD sin haberse suscrito antes. E
 **Cómo se envían.** Un MD cada 1,5 s (`pauseBetweenSendsMs`) para respetar los límites anti-spam de Discord. Si Discord pide frenar, el lote se detiene y se retoma en el siguiente ciclo sin repetir a nadie. Nunca se envía una vez iniciado el KOTH ni con más de 8 minutos de retraso (`maxLatenessMs`). Cada envío queda registrado por (aviso, usuario) en SQLite, así que nadie recibe el mismo MD dos veces, tampoco tras un reinicio.
 
 **Privacidad.** Solo se guarda el ID de usuario y la fecha de alta. `/koth cancelar` borra el registro.
+
+## Apagar y encender los avisos
+
+`/koth apagar` y `/koth encender` (solo con _Gestionar servidor_) sustituyen a apagar el bot desde el panel del host. **No detienen el proceso**: el bot sigue conectado y los comandos siguen funcionando, pero no publica avisos en el canal ni envía MD hasta que se vuelve a encender. Un proceso detenido no podría recibir el comando de encender, por eso es una pausa y no un apagado real.
+
+- **Se conserva al reiniciar:** el estado se guarda en SQLite. Si el host se reinicia con los avisos apagados, siguen apagados (y el log lo avisa al arrancar).
+- **Si se apaga a mitad de un reparto de MD**, se detiene al instante.
+- **Al encender no se envían avisos atrasados:** solo sale el que venció hace menos de 5 minutos (8 en los MD) y siga a tiempo; los de antes se dan por omitidos, y un KOTH que ya empezó no se anuncia nunca.
+- **Suscribirse sigue funcionando** con los avisos apagados, y `/koth prueba` también.
+- **Es por instancia:** el estado vive en la base de datos de cada bot. Si ejecutas el bot en tu PC y en el host a la vez (cada uno con su `.sqlite`), hay que apagar cada uno por separado.
 
 ## Iconos (Lucide)
 
@@ -289,6 +301,7 @@ El timestamp representa el **inicio exacto del KOTH**, no el momento del envío.
 - Tabla `koth_dm_subscribers`: los miembros suscritos a los MD (ID de usuario, fecha de alta y fallos seguidos).
 - Tabla `koth_dm_deliveries`: un registro por (aviso, usuario) con el estado del MD (`sent`, `unreachable`, `left`, `failed`).
 - Tabla `koth_panel_messages`: qué mensaje es el panel de suscripción, para actualizarlo en su sitio.
+- Tabla `koth_pause_state`: si los avisos están apagados o encendidos, y quién lo cambió y cuándo.
 - El historial de más de **30 días** se depura al arrancar.
 
 **Garantía de entrega:** el sistema prioriza **no duplicar**. Si el proceso muere justo entre el envío a Discord y la confirmación en la base de datos, el aviso queda en `processing` y no se reenvía. Es preferible perder ese aviso concreto a publicarlo dos veces.

@@ -3,8 +3,11 @@ import { vi } from 'vitest';
 import type { KothCommandDependencies } from '../../src/modules/koth/commands/koth-command.dependencies.js';
 import type { KothSubscriptionPanelGateway } from '../../src/modules/koth/domain/koth.ports.js';
 import { SqliteKothPanelMessageRepository } from '../../src/modules/koth/repositories/sqlite-koth-panel-message.repository.js';
+import { SqliteKothPauseStateRepository } from '../../src/modules/koth/repositories/sqlite-koth-pause-state.repository.js';
+import { KothPauseService } from '../../src/modules/koth/services/koth-pause.service.js';
 import { KothSubscriptionPanelService } from '../../src/modules/koth/services/koth-subscription-panel.service.js';
 import { createMessageContext, type DmHarness } from './direct-messages.js';
+import { silentLogger } from './scheduler.js';
 import { createTimeService } from './time.js';
 
 type ReplyPayload = string | { content?: string; flags?: unknown; embeds?: unknown[] };
@@ -145,6 +148,15 @@ export class FakePanelGateway implements KothSubscriptionPanelGateway {
 
 export const SUBSCRIPTION_CHANNEL_ID = '1570918164261376220';
 
+/** Servicio de apagado/encendido sobre la base de datos del banco de pruebas. */
+export function createPauseService(harness: DmHarness): KothPauseService {
+  return new KothPauseService({
+    repository: new SqliteKothPauseStateRepository(harness.database),
+    clock: harness.clock,
+    logger: silentLogger,
+  });
+}
+
 export interface CommandDependenciesOptions {
   /** `null` simula que no hay canal de suscripción configurado. */
   readonly subscriptionChannelId?: string | null;
@@ -168,6 +180,7 @@ export function createCommandDependencies(
     announcementChannelId: 'canal-de-avisos',
     subscriptions: harness.subscriptions,
     messenger: harness.messenger,
+    pause: createPauseService(harness),
     panel:
       subscriptionChannelId === null
         ? null

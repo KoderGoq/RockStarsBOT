@@ -1,5 +1,6 @@
 import type { Clock } from '../../../shared/types/clock.js';
 import type { KothDirectMessenger } from '../domain/koth.ports.js';
+import type { KothPauseService } from '../services/koth-pause.service.js';
 import type { KothSubscriptionPanelService } from '../services/koth-subscription-panel.service.js';
 import type { KothSubscriptionService } from '../services/koth-subscription.service.js';
 import type { KothTimeService } from '../services/koth-time.service.js';
@@ -15,4 +16,6 @@ export interface KothCommandDependencies {
   readonly messenger: KothDirectMessenger;
   /** `null` si no hay canal de suscripción configurado: entonces no hay panel. */
   readonly panel: KothSubscriptionPanelService | null;
+  /** Apagado/encendido de los avisos (`/koth apagar` y `/koth encender`). */
+  readonly pause: KothPauseService;
 }

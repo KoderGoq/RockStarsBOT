@@ -18,6 +18,8 @@ export interface KothSchedulerDependencies {
   readonly announcer: KothAnnouncer;
   readonly logger: Logger;
   readonly options: KothSchedulerOptions;
+  /** Si devuelve `true`, no se publica nada (avisos apagados). Por defecto, siempre encendido. */
+  readonly isPaused?: () => boolean;
 }
 
 export interface SkippedReminder {
@@ -53,6 +55,10 @@ export class KothSchedulerService {
 
   async tick(now: DateTime): Promise<SchedulerTickSummary> {
     const summary: SchedulerTickSummary = { sent: [], skipped: [], failed: [] };
+
+    // Apagado: no se publica ni se registra nada. Al encender, solo se publicará el aviso
+    // vencido hace menos de `maxLatenessMs`; los demás se darán por omitidos como siempre.
+    if (this.deps.isPaused?.() === true) return summary;
 
     for (const occurrence of this.getOccurrencesWithPossibleReminders(now)) {
       await this.processOccurrence(occurrence, now, summary);

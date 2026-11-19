@@ -111,6 +111,10 @@ export interface DmHarnessOptions {
   readonly startAt?: string;
   /** Si es `true`, cada pausa hace avanzar el reloj simulado el tiempo pedido. */
   readonly pauseAdvancesClock?: boolean;
+  /** Se ejecuta en cada pausa entre envíos (permite simular algo que ocurre a mitad del reparto). */
+  readonly onPause?: () => void;
+  /** Simula el interruptor de apagado/encendido de los avisos. */
+  readonly isPaused?: () => boolean;
   readonly options?: Partial<KothDmDispatcherOptions>;
 }
 
@@ -130,11 +134,13 @@ export function createDmHarness(settings: DmHarnessOptions = {}): DmHarness {
     clock,
     pause: (ms) => {
       pauses.push(ms);
+      settings.onPause?.();
       if (settings.pauseAdvancesClock === true) clock.advance({ seconds: ms / 1000 });
       return Promise.resolve();
     },
     logger: silentLogger,
     options: { ...kothConfig.directMessages, ...settings.options },
+    ...(settings.isPaused === undefined ? {} : { isPaused: settings.isPaused }),
   });
   const subscriptions = new KothSubscriptionService({ subscribers, messenger, clock });
 

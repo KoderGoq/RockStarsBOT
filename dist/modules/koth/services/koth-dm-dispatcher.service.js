@@ -28,6 +28,8 @@ export class KothDmDispatcherService {
             failed: [],
             rateLimited: false,
         };
+        if (this.deps.isPaused?.() === true)
+            return summary;
         for (const reminder of this.findDueReminders(this.deps.clock.now())) {
             const completed = await this.dispatchReminder(reminder, summary, signal);
             if (!completed)
@@ -49,6 +51,10 @@ export class KothDmDispatcherService {
         const { deliveries, clock, pause, options } = this.deps;
         for (const userId of deliveries.listPendingUserIds(reminder.key)) {
             if (signal?.aborted === true)
+                return false;
+            // Se consulta en cada envío: si alguien apaga los avisos a mitad de un reparto, se
+            // detiene al instante, sin esperar a que termine toda la lista.
+            if (this.deps.isPaused?.() === true)
                 return false;
             const now = clock.now();
             if (!this.canStillSend(reminder, now))
